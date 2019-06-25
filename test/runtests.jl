@@ -1,6 +1,13 @@
 using NLSolvers
 using Test
+using StaticArrays
+#using Optim
+#using LineSearches
+using Printf
+using LinearAlgebra: norm, I
 
-@testset "NLSolvers.jl" begin
-    # Write your own tests here.
-end
+include("noalloc_static.jl")
+include("scalar/runtests.jl")
+include("optimize/runtests.jl")
+include("specialtypes/runtests.jl")
+include("newton.jl")
