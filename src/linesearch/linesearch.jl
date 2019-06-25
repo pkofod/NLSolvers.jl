@@ -1,5 +1,5 @@
 abstract type LineSearch end
-include("linesearches/backtracking.jl")
+include("linesearches/root.jl")
 
-include("optimize/common.jl")
-include("nlsolve/common.jl")
+include("optimize/root.jl")
+include("nlsolve/root.jl")
