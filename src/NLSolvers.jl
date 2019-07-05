@@ -10,6 +10,9 @@ using LinearAlgebra: dot, I, norm,
                      diag, # for trust region diagonal manipulation
                      opnorm # for NWI safe guards
 
+using RandomNumbers # for better random number generators and also rand!
+
+
 # make this struct that has scheme and approx
 abstract type QuasiNewton{T1} end
 
@@ -34,7 +37,7 @@ struct OptOptions{T1, T2}
     show_trace::Bool
 end
 
-OptOptions(; c=1e-4, g_tol=1e-8, maxiter=10^4, show_trace=false) =
+OptOptions(; c=1e-4, g_tol=1e-8, maxiter=500, show_trace=false) =
 OptOptions(c, g_tol, maxiter, show_trace)
 
 abstract type HessianApproximation end
@@ -45,6 +48,7 @@ struct Direct <: HessianApproximation end
 include("linesearch/linesearch.jl")
 include("quasinewton/quasinewton.jl")
 include("trustregions/trustregions.jl")
+include("randomsearch/randomsearch.jl")
 
 export minimize, minimize!, OptOptions
 export nlsolve, nlsolve!

@@ -32,8 +32,11 @@ using NLSolvers, Test
             return fx, ∇f, ∇²f
         end
     end
+    himmelblau(∇f, x) = himmelblau!(∇f, x)
+    himmelblau(∇²f, ∇f, x) = himmelblau!(∇²f, ∇f, x)
 
     res = minimize!(himmelblau!, copy([2.0,2.0]), Newton(Direct()))
     @test norm(res[3], Inf) < 1e-8
-    @printf("NN! Newton (direct): %2.2e  %d\n", norm(res[3], Inf), res[4])
+    res = minimize(himmelblau, copy([2.0,2.0]), Newton(Direct()))
+    @test norm(res[3], Inf) < 1e-8
 end

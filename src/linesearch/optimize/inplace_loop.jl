@@ -6,6 +6,7 @@ function minimize!(objective, x0, approach::Tuple{<:Any, <:LineSearch}, B0=nothi
                    cache = preallocate_qn_caches_inplace(x0), # preallocate arrays for QN
                    )
 
+    T = eltype(x0)
     x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(objective, approach, x0, copy(x0), B0)
 
     # first iteration
@@ -17,6 +18,9 @@ function minimize!(objective, x0, approach::Tuple{<:Any, <:LineSearch}, B0=nothi
 
         # take a step and update approximation
         x, fx, ∇fx, z, fz, ∇fz, B, is_converged = iterate!(cache, x, fx, ∇fx, z, fz, ∇fz, B, approach, objective, options, false)
+        if norm(x-z, Inf) == T(0)
+            break
+        end
     end
     return z, fz, ∇fz, iter
 end

@@ -1,8 +1,8 @@
 using NLSolvers, Test, DoubleFloats
-function fourth(∇f, x)
-    fourth(nothing, ∇f, x)
+function myfun(∇f, x)
+    myfun(nothing, ∇f, x)
 end
-function fourth(∇²f, ∇f, x::T) where T
+function myfun(∇²f, ∇f, x::T) where T
     if !(∇²f == nothing)
         ∇²f = 12x^2 - sin(x)
     end
@@ -22,9 +22,9 @@ end
 @testset "scalar return types" begin
 for T = (Float16, Float32, Float64, Rational{BigInt}, Double32, Double64)
     for M in (SR1, BFGS, DFP, Newton)
-        res = minimize(fourth, T(4), M(Direct()))
+        res = minimize(myfun, T(4), M(Direct()))
         @test all(isa.(res[1:3], T))
-        res = minimize(fourth, T(4), M(Inverse()))
+        res = minimize(myfun, T(4), M(Inverse()))
         @test all(isa.(res[1:3], T))
     end
 end

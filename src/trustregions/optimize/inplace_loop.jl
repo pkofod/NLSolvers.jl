@@ -1,5 +1,37 @@
+struct HessianResult
+
+end
+struct GradientResult
+
+end
+struct ValueResult
+
+end
+
+struct MinIterator
+    x
+    fx
+    ∇fx
+    z
+    fz
+    ∇fz
+    B
+    d
+    s
+    y
+    approach
+    options
+end
+
+
+function minimization_iterator(objective, x0, approach, B0)
+    x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(objective, approach, x0, copy(x0), B0)
+    MinIterator(x, fx, ∇fx, z, fz, ∇fz, B, approach, options)
+end
+
 function tr_minimize!(objective, x0, approach, B0, options)
     T = eltype(x0)
+    Δmin = sqrt(eps(T))
 
     x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(objective, approach, x0, copy(x0), B0)
     p = copy(x)
@@ -13,6 +45,9 @@ function tr_minimize!(objective, x0, approach, B0, options)
     while iter <= options.maxiter && !is_converged
         iter += 1
         x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, accept, is_converged = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, approach, objective, options)
+        if Δkp1 ≤ Δmin || norm(∇fx, Inf) ≤ options.g_tol
+            break
+        end
     end
     return z, fz, ∇fz, iter
 end
@@ -70,7 +105,7 @@ function update_trust_region(spr, R, p)
     # Chosing a parameter > 0 might be preferable here. See p. 4 of Yuans survey
     # We want to avoid cycles, but we also need something that takes very small
     # steps when convergence is hard to achieve.
-    α = T(1)/7 # acceptance ratio
+    α = T(0)/7 # acceptance ratio
     t2 = T(1)/4
     t3 = t2 # could differ!
     t4 = T(1)/2
