@@ -12,22 +12,19 @@ using LinearAlgebra: dot, I, norm,
 
 using RandomNumbers # for better random number generators and also rand!
 
+using SparseDiffTools
+
+import Base: show
+
+include("objectives.jl")
+export NonDiff, OnceDiff, TwiceDiff
 
 # make this struct that has scheme and approx
 abstract type QuasiNewton{T1} end
 
-struct NLLS{O}
-    obj::O
-end
-function (nlls::NLLS)(∇f, x)
-    F, G = nlls.obj(∇f, x)
-    f = sum(F)
-    if isa(G, Nothing)
-        return f
-    else
-        f, G'*F
-    end
-    return
+struct OptProblem{Tobj, TState}
+    obj::Tobj
+    x::TState
 end
 
 struct OptOptions{T1, T2}
@@ -45,6 +42,7 @@ struct Inverse <: HessianApproximation end
 struct Direct <: HessianApproximation end
 
 # Include the actual functions that expose the functionality in this package.
+include("directsearch/directsearch.jl")
 include("linesearch/linesearch.jl")
 include("quasinewton/quasinewton.jl")
 include("trustregions/trustregions.jl")
@@ -57,5 +55,10 @@ export NWI, TRSolver
 export Inverse, Direct
 # Export algos
 export BFGS, SR1, DFP, GradientDescent
-export NLEProblem
+export Newton
+export ResidualKrylov, ResidualKrylovProblem
+# Forcing Terms
+export FixedForceTerm, DemboSteihaug, EisenstatWalkerA, EisenstatWalkerB
+
+export NLEProblem, OptProblem
 end # module

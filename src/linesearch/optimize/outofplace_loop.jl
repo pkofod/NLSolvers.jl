@@ -1,10 +1,10 @@
-function minimize(objective, x0, scheme::QuasiNewton, B0=nothing, options=OptOptions())
+function minimize(objective::ObjWrapper, x0, scheme::QuasiNewton, B0=nothing, options=OptOptions())
     minimize(objective, x0, (scheme, BackTracking()), B0, options)
 end
 function minimize(objective::T1, x0, approach::Tuple{<:Any, <:LineSearch}, B0=nothing,
                   options::OptOptions=OptOptions(),
                   linesearch::T2 = BackTracking()
-                  ) where {T1, T2}
+                  ) where {T1<:ObjWrapper, T2}
     x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(objective, approach, x0, copy(x0), B0)
     # first iteration
     z, fz, ∇fz, B, is_converged = iterate(x, fx, ∇fx, z, fz, ∇fz, B, approach, objective, options)

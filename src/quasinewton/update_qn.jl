@@ -14,7 +14,6 @@ function preallocate_qn_caches_inplace(x0)
     return cache
 end
 
-
 function update_obj!(objective, d, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothing)
     fz, ∇fz = objective(∇fz, z)
     # add Project gradient

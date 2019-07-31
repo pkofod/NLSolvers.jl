@@ -1,7 +1,7 @@
-function minimize!(objective, x0, scheme::QuasiNewton, B0=nothing, options=OptOptions(), cache=preallocate_qn_caches_inplace(x0))
+function minimize!(objective::ObjWrapper, x0, scheme::QuasiNewton, B0=nothing, options=OptOptions(), cache=preallocate_qn_caches_inplace(x0))
     minimize!(objective, x0, (scheme, BackTracking()), B0, options, cache )
 end
-function minimize!(objective, x0, approach::Tuple{<:Any, <:LineSearch}, B0=nothing,
+function minimize!(objective::ObjWrapper, x0, approach::Tuple{<:Any, <:LineSearch}, B0=nothing,
                    options::OptOptions=OptOptions(), # options
                    cache = preallocate_qn_caches_inplace(x0), # preallocate arrays for QN
                    )
@@ -18,7 +18,7 @@ function minimize!(objective, x0, approach::Tuple{<:Any, <:LineSearch}, B0=nothi
 
         # take a step and update approximation
         x, fx, ∇fx, z, fz, ∇fz, B, is_converged = iterate!(cache, x, fx, ∇fx, z, fz, ∇fz, B, approach, objective, options, false)
-        if norm(x-z, Inf) == T(0)
+        if norm(x.-z, Inf) == T(0)
             break
         end
     end

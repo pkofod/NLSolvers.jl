@@ -5,13 +5,13 @@ struct BackTracking{T1, T2} <: LineSearch
 	verbose::Bool
 end
 BackTracking(; ratio=0.5, c=1e-4, maxiter=50, verbose=false) = BackTracking(ratio, c, maxiter, verbose)
-function find_steplength(ls::BackTracking, f∇f::T, d, x, f_0::Tf, ∇f_0, α_0) where {T, Tf}
+function find_steplength(ls::BackTracking, obj::T, d, x, f_0::Tf, ∇f_0, α_0) where {T, Tf}
 	ratio, c, maxiter, verbose = Tf(ls.ratio), Tf(ls.c), ls.maxiter, ls.verbose
 
     if verbose
         println("Entering line search with step size: ", α_0)
         println("Initial value: ", f_0)
-        println("Value at first step: ", f∇f(nothing, x+α_0*d))
+        println("Value at first step: ", obj(x+α_0*d))
     end
 
 	m = dot(d, ∇f_0)
@@ -21,13 +21,13 @@ function find_steplength(ls::BackTracking, f∇f::T, d, x, f_0::Tf, ∇f_0, α_0
 
     iter = 0
 
-    f_α = f∇f(nothing, x + α*d) # initial function value
+    f_α = obj(x + α*d) # initial function value
 
 	is_solved = isfinite(f_α) && f_α <= f_0 + c*α*t
     while !is_solved && iter <= maxiter
         iter += 1
         β, α = α, α*ratio # backtrack according to specified ratio
-        f_α = f∇f(nothing, x + α*d) # update function value
+        f_α = obj(x + α*d) # update function value
 		is_solved = isfinite(f_α) && f_α <= f_0 + c*α*t
     end
 
@@ -40,13 +40,13 @@ function find_steplength(ls::BackTracking, f∇f::T, d, x, f_0::Tf, ∇f_0, α_0
     end
     return α, f_α, ls_success
 end
-function find_steplength!(ls::BackTracking, f∇f::T, d, x, f_0, ∇f_0, α_0) where T
+function find_steplength!(ls::BackTracking, obj::T, d, x, f_0, ∇f_0, α_0) where T
 	ratio, c, maxiter, verbose = ls.ratio, ls.c, ls.maxiter, ls.verbose
 
     if verbose
         println("Entering line search with step size: ", α_0)
         println("Initial value: ", f_0)
-        println("Value at first step: ", f∇f(nothing, x+α_0*d))
+        println("Value at first step: ", obj(x+α_0*d))
     end
 
 	m = dot(d, ∇f_0)
@@ -59,14 +59,14 @@ function find_steplength!(ls::BackTracking, f∇f::T, d, x, f_0, ∇f_0, α_0) w
 	# the "nu" state
 	ν = x .+ α .* d
 
-    f_α = f∇f(nothing, ν) # initial function value
+    f_α = obj(ν) # initial function value
 
 	is_solved = isfinite(f_α) && f_α <= f_0 + c*α*t
     while !is_solved && iter <= maxiter
         iter += 1
         β, α = α, α*ratio # backtrack according to specified ratio
 		@. ν = x + α*d
-        f_α = f∇f(nothing, ν) # update function value
+        f_α = obj(ν) # update function value
 		is_solved = isfinite(f_α) && f_α <= f_0 + c*α*t
     end
 

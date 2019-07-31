@@ -14,10 +14,9 @@ function prepare_variables(objective, approach, x0, ∇fz, B)
     end
     # first evaluation
     if isa(first(approach), Newton)
-        fz, ∇fz, B = objective(B, ∇fz, x)
+        fz, ∇fz, B = objective(x, ∇fz, B)
     else
-
-        fz, ∇fz = objective(∇fz, x)
+        fz, ∇fz = objective(x, ∇fz)
     end
     fx = copy(fz)
     ∇fx = copy(∇fz)

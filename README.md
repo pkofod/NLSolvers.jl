@@ -1,7 +1,19 @@
 # NLSolvers
 Still under construction, so stuff will break (and improve!)
 
-# Examples
+## Installation
+Installing NLSolvers is easy, simply write
+```
+using Pkg
+Pkg.add("NLSolvers")
+```
+
+or use the REPL mode to install the package
+```
+]add NLSolvers
+```
+
+## Documentation
 
 ## Scalar optimization (w/ different number types)
 ```

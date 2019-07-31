@@ -19,24 +19,27 @@ function fourth(∇²f, ∇f, x)
         return fx, ∇f, ∇²f
     end
 end
+
+scaler_obj = TwiceDiff(fourth; infer=true)
+
 @testset "scalar no-alloc" begin
-_alloc = @allocated minimize(fourth, 4.0, SR1(Direct()))
-_alloc = @allocated minimize(fourth, 4.0, SR1(Direct()))
+_alloc = @allocated minimize(scaler_obj, 4.0, SR1(Direct()))
+_alloc = @allocated minimize(scaler_obj, 4.0, SR1(Direct()))
 @test _alloc == 0
 
-_alloc = @allocated minimize(fourth, 4.0, BFGS(Direct()))
-_alloc = @allocated minimize(fourth, 4.0, BFGS(Direct()))
+_alloc = @allocated minimize(scaler_obj, 4.0, BFGS(Direct()))
+_alloc = @allocated minimize(scaler_obj, 4.0, BFGS(Direct()))
 @test _alloc == 0
 
-_alloc = @allocated minimize(fourth, 4.0, DFP(Direct()))
-_alloc = @allocated minimize(fourth, 4.0, DFP(Direct()))
+_alloc = @allocated minimize(scaler_obj, 4.0, DFP(Direct()))
+_alloc = @allocated minimize(scaler_obj, 4.0, DFP(Direct()))
 @test _alloc == 0
 
-_alloc = @allocated minimize(fourth, 4.0, Newton(Direct()))
-_alloc = @allocated minimize(fourth, 4.0, Newton(Direct()))
+_alloc = @allocated minimize(scaler_obj, 4.0, Newton(Direct()))
+_alloc = @allocated minimize(scaler_obj, 4.0, Newton(Direct()))
 @test _alloc == 0
 
-_alloc = @allocated minimize(fourth, 4.0, Newton(Direct()))
-_alloc = @allocated minimize(fourth, 4.0, Newton(Direct()))
+_alloc = @allocated minimize(scaler_obj, 4.0, Newton(Direct()))
+_alloc = @allocated minimize(scaler_obj, 4.0, Newton(Direct()))
 @test _alloc == 0
 end

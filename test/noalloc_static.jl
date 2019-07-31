@@ -36,64 +36,67 @@
         end
     end
     sv3 = @SVector[0.0,0.0,0.0]
-    @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3', OptOptions())
+
+    fg_static = OnceDiff(fletcher_powell_fg_static; infer=true)
+
+    @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3', OptOptions())
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3', OptOptions())
     @test _alloc == 0
-    @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3')
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3')
+    @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3')
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3')
     @test _alloc == 0
-    @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()))
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()))
+    @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()))
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()))
     @test _alloc == 0
 
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3', OptOptions())
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3', OptOptions())
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3', OptOptions())
     @test _alloc == 0
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3')
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3')
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3')
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3')
     @test _alloc == 0
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()))
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()))
-    @test _alloc == 0
-
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3', OptOptions())
-    @test _alloc == 0
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3')
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3')
-    @test _alloc == 0
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()))
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()))
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()))
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()))
     @test _alloc == 0
 
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3', OptOptions())
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3', OptOptions())
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3', OptOptions())
     @test _alloc == 0
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3')
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3')
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3')
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3')
     @test _alloc == 0
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()))
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()))
-    @test _alloc == 0
-
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3', OptOptions())
-    @test _alloc == 0
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3')
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3')
-    @test _alloc == 0
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()))
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()))
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()))
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()))
     @test _alloc == 0
 
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3', OptOptions())
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3', OptOptions())
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3', OptOptions())
     @test _alloc == 0
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3')
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3')
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3')
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3')
     @test _alloc == 0
-    minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()))
-    _alloc = @allocated minimize(fletcher_powell_fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()))
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()))
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()))
+    @test _alloc == 0
+
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3', OptOptions())
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3', OptOptions())
+    @test _alloc == 0
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3')
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3')
+    @test _alloc == 0
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()))
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()))
+    @test _alloc == 0
+
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3', OptOptions())
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3', OptOptions())
+    @test _alloc == 0
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3')
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3')
+    @test _alloc == 0
+    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()))
+    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()))
     @test _alloc == 0
 
 end
