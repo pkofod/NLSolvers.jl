@@ -13,7 +13,7 @@ using LinearAlgebra: dot, I, norm,
 
 using RandomNumbers # for better random number generators and also rand!
 
-using SparseDiffTools
+#using SparseDiffTools
 
 import Base: show
 
