@@ -22,9 +22,14 @@ end
 @testset "scalar return types" begin
 for T = (Float16, Float32, Float64, Rational{BigInt}, Double32, Double64)
     for M in (SR1, BFGS, DFP, Newton)
-        res = minimize(myfun, T(4), M(Direct()))
+        if M == Newton
+            obj = TwiceDiff(myfun)
+        else
+            obj = OnceDiff(myfun)
+        end
+        res = minimize(obj, T(4), M(Direct()))
         @test all(isa.(res[1:3], T))
-        res = minimize(myfun, T(4), M(Inverse()))
+        res = minimize(obj, T(4), M(Inverse()))
         @test all(isa.(res[1:3], T))
     end
 end

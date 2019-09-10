@@ -1,4 +1,4 @@
-using NLSolvers, Test
+using NLSolvers, StaticArrays, Test
 function himmelblau(∇²f, ∇f, x)
     if !(∇²f == nothing)
         ∇²f11 = 12.0 * x[1]^2 + 4.0 * x[2] - 42.0
@@ -43,6 +43,8 @@ function himmelblau(∇f, x)
         return fx, ∇f
     end
 end
+
+inferredhimmelblau = TwiceDiff(himmelblau; infer=true)
 @testset "Newton" begin
     function himmelblau!(∇f, x)
         if !(∇f == nothing)
@@ -78,17 +80,21 @@ end
     himmelblau_nonmut(∇f, x) = himmelblau!(∇f, x)
     himmelblau_nonmut(∇²f, ∇f, x) = himmelblau!(∇²f, ∇f, x)
 
-    res = minimize!(himmelblau!, copy([2.0,2.0]), Newton(Direct()))
+    res = minimize!(TwiceDiff(himmelblau!), copy([2.0,2.0]), Newton(Direct()))
     @test norm(res[3], Inf) < 1e-8
-    res = minimize(himmelblau_nonmut, copy([2.0,2.0]), Newton(Direct()))
+    res = minimize(TwiceDiff(himmelblau_nonmut), copy([2.0,2.0]), Newton(Direct()))
     @test norm(res[3], Inf) < 1e-8
 
     @testset "newton static" begin
-        res = minimize(himmelblau, @SVector([2.0,2.0]), Newton(Direct()))
+        res = minimize(inferredhimmelblau, @SVector([2.0,2.0]), Newton(Direct()))
+        _alloc = @allocated minimize(inferredhimmelblau, @SVector([2.0,2.0]), Newton(Direct()))
+        @test_broken _alloc == 0
         @test norm(res[3], Inf) < 1e-8
-        _alloc = @allocated minimize(himmelblau, @SVector([2.0,2.0]), Newton(Direct()))
-        _alloc = @allocated minimize(himmelblau, @SVector([2.0,2.0]), Newton(Direct()))
-        @test _alloc == 0
+        _res = minimize(inferredhimmelblau, @SVector([2.0,2.0]), (Newton(Direct()), BackTracking()))
+        _alloc = @allocated minimize(inferredhimmelblau, @SVector([2.0,2.0]), (Newton(Direct()), BackTracking()))
+        @test_broken _alloc == 0
+        _alloc = @allocated minimize(inferredhimmelblau, @SVector([2.0,2.0]), (Newton(Direct()), BackTracking()))
+        @test_broken _alloc == 0
         @test norm(res[3], Inf) < 1e-8
     end
 

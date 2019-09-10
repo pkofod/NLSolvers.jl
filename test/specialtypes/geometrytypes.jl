@@ -12,13 +12,13 @@ function f(G, x)
         return fx
     end
 end
+f_obj = OnceDiff(f)
+minimize(f_obj, Point(3.0,3.0), GradientDescent(Inverse()), I, OptOptions())
+minimize(f_obj, Point(3.0,3.0), BFGS(Inverse()), I, OptOptions())
+minimize(f_obj, Point(3.0,3.0), DFP(Inverse()), I, OptOptions())
+minimize(f_obj, Point(3.0,3.0), SR1(Inverse()), I, OptOptions())
 
-minimize(f, Point(3.0,3.0), GradientDescent(Inverse()), I, OptOptions())
-minimize(f, Point(3.0,3.0), BFGS(Inverse()), I, OptOptions())
-minimize(f, Point(3.0,3.0), DFP(Inverse()), I, OptOptions())
-minimize(f, Point(3.0,3.0), SR1(Inverse()), I, OptOptions())
-
-minimize(f, Point(3.0,3.0), GradientDescent(Direct()), I, OptOptions())
-minimize(f, Point(3.0,3.0), BFGS(Direct()), I, OptOptions())
-minimize(f, Point(3.0,3.0), DFP(Direct()), I, OptOptions())
-minimize(f, Point(3.0,3.0), SR1(Direct()), I, OptOptions())
+minimize(f_obj, Point(3.0,3.0), GradientDescent(Direct()), I, OptOptions())
+minimize(f_obj, Point(3.0,3.0), BFGS(Direct()), I, OptOptions())
+minimize(f_obj, Point(3.0,3.0), DFP(Direct()), I, OptOptions())
+minimize(f_obj, Point(3.0,3.0), SR1(Direct()), I, OptOptions())

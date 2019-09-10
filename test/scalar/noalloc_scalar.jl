@@ -1,7 +1,5 @@
 using NLSolvers, Test
-function fourth(∇f, x)
-    fourth(nothing, ∇f, x)
-end
+
 function fourth(∇²f, ∇f, x)
     if !(∇²f == nothing)
         ∇²f = 12x^2 - sin(x)
@@ -20,26 +18,26 @@ function fourth(∇²f, ∇f, x)
     end
 end
 
-scaler_obj = TwiceDiff(fourth; infer=true)
 
 @testset "scalar no-alloc" begin
-_alloc = @allocated minimize(scaler_obj, 4.0, SR1(Direct()))
-_alloc = @allocated minimize(scaler_obj, 4.0, SR1(Direct()))
+scalar_obj = TwiceDiff(fourth; infer=true)
+_alloc = @allocated minimize(scalar_obj, 4.0, SR1(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, SR1(Direct()))
 @test _alloc == 0
 
-_alloc = @allocated minimize(scaler_obj, 4.0, BFGS(Direct()))
-_alloc = @allocated minimize(scaler_obj, 4.0, BFGS(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, BFGS(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, BFGS(Direct()))
 @test _alloc == 0
 
-_alloc = @allocated minimize(scaler_obj, 4.0, DFP(Direct()))
-_alloc = @allocated minimize(scaler_obj, 4.0, DFP(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, DFP(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, DFP(Direct()))
 @test _alloc == 0
 
-_alloc = @allocated minimize(scaler_obj, 4.0, Newton(Direct()))
-_alloc = @allocated minimize(scaler_obj, 4.0, Newton(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, Newton(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, Newton(Direct()))
 @test _alloc == 0
 
-_alloc = @allocated minimize(scaler_obj, 4.0, Newton(Direct()))
-_alloc = @allocated minimize(scaler_obj, 4.0, Newton(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, Newton(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, Newton(Direct()))
 @test _alloc == 0
 end

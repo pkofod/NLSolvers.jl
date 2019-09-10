@@ -15,7 +15,7 @@ function preallocate_qn_caches_inplace(x0)
 end
 
 function update_obj!(objective, d, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothing)
-    fz, ∇fz = objective(∇fz, z)
+    fz, ∇fz = objective(z, ∇fz)
     # add Project gradient
 
     # Update y
@@ -38,13 +38,13 @@ function update_obj!(objective, d, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothi
 end
 
 function update_obj!(objective, d, s, y, ∇fx, z, ∇fz, B, scheme::Newton, scale=nothing)
-    fz, ∇fz, B = objective(B, ∇fz, z)
+    fz, ∇fz, B = objective(z, ∇fz, B)
 
     return fz, ∇fz, B
 end
 
 function update_obj(objective, d, s, ∇fx, z, ∇fz, B, scheme, scale=nothing)
-    fz, ∇fz = objective(∇fz, z)
+    fz, ∇fz = objective(z, ∇fz)
     # add Project gradient
 
     # Update y
@@ -68,7 +68,7 @@ function update_obj(objective, d, s, ∇fx, z, ∇fz, B, scheme, scale=nothing)
 end
 
 function update_obj(objective, d, s, ∇fx, z, ∇fz, B, scheme::Newton, is_first=nothing)
-    fz, ∇fz, B = objective(B, ∇fx, z)
+    fz, ∇fz, B = objective(z, ∇fx, B)
 
     return fz, ∇fz, B
 end

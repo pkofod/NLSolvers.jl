@@ -2,29 +2,23 @@ abstract type ObjWrapper end
 
 struct NonDiff{Tobj} <: ObjWrapper
     obj::Tobj
+    NonDiff(f; infer::Bool) = new{infer ? typeof(f) : Any}(f)
 end
 
-NonDiff(f; infer=false) = NonDiff{infer ? typeof(f) : Any}(f)
 (od::NonDiff)(x) = od.obj(x)
 (od::NonDiff)(x, arg, args...) = throw(ArgumentError("NonDiff cannot be called with more than one arguement."))
 
 struct OnceDiff{Tobj, TAD} <: ObjWrapper
     obj::Tobj
     source::TAD
-end
-
-function inferOnceDiff(f, source, infer)
-    if infer
-        # Just pass it on
-        return OnceDiff(f, source)
-    else
-        return OnceDiff{Any, Nothing}(f, source)
+    function OnceDiff(f; infer=false)
+        source = nothing # no AD gradient
+        Tsource = Nothing # no AD gradient
+        inferred = infer ? typeof(f) : Any
+        return new{inferred, Nothing}(f, source)
     end
 end
-function OnceDiff(f; infer=false)
-    source = nothing # no AD gradient
-    inferOnceDiff(f, source, infer)
-end
+
 derivative_source(od::OnceDiff{<:Any, Nothing}) = "user supplied"
 function OnceDiff(f::NonDiff, x; infer=false)
     δ = OnceFromNon(f, x)
@@ -36,14 +30,11 @@ end
 struct TwiceDiff{Tobj, TAD} <: ObjWrapper
     obj::Tobj
     source::TAD
-end
-function TwiceDiff(f; infer=false)
-    source = nothing # no AD gradient
-    if infer
-        # Just pass it on
-        return TwiceDiff(f, source)
-    else
-        return TwiceDiff{Any, Nothing}(f, source)
+    function TwiceDiff(f; infer=false)
+        source = nothing # no AD gradient
+        Tsource = Nothing
+        inferred = infer ? typeof(f) : Any
+        return new{inferred, Tsource}(f, source)
     end
 end
 (td::TwiceDiff)(x) = td.obj(nothing, nothing, x)

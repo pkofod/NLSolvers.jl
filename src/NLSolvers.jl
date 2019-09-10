@@ -1,4 +1,5 @@
 module NLSolvers
+
 # We use often use the LinearAlgebra functions dot and norm for operations rela-
 # ted to assessing angles between vectors, size of vectors and so on.
 using LinearAlgebra: dot, I, norm,
@@ -22,24 +23,21 @@ export NonDiff, OnceDiff, TwiceDiff
 # make this struct that has scheme and approx
 abstract type QuasiNewton{T1} end
 
-struct OptProblem{Tobj, TState}
-    obj::Tobj
-    x::TState
-end
+abstract type HessianApproximation end
+struct Inverse <: HessianApproximation end
+struct Direct <: HessianApproximation end
 
 struct OptOptions{T1, T2}
-    c::T1
     g_tol::T1
     maxiter::T2
     show_trace::Bool
 end
 
-OptOptions(; c=1e-4, g_tol=1e-8, maxiter=500, show_trace=false) =
-OptOptions(c, g_tol, maxiter, show_trace)
+OptOptions(; g_tol=1e-8, maxiter=10000, show_trace=false) =
+OptOptions(g_tol, maxiter, show_trace)
 
-abstract type HessianApproximation end
-struct Inverse <: HessianApproximation end
-struct Direct <: HessianApproximation end
+abstract type LineSearch end
+include("linesearches/root.jl")
 
 # Include the actual functions that expose the functionality in this package.
 include("directsearch/directsearch.jl")
@@ -53,6 +51,7 @@ export nlsolve, nlsolve!
 export backtracking, BackTracking
 export NWI, TRSolver
 export Inverse, Direct
+
 # Export algos
 export BFGS, SR1, DFP, GradientDescent
 export Newton

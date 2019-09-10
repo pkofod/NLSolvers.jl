@@ -82,7 +82,6 @@ function nlsolve!(kp::ResidualKrylovOp, x, method::ResidualKrylov; f_abstol=1e-8
 
         rhs = ηₖ*norm(Fx)
         for item in krylov_iter
-            # println("lhs: ", norm(Fx+krylov_iter.residual, 2))
             res = krylov_iter.residual.current
             if res <= rhs
                 break
