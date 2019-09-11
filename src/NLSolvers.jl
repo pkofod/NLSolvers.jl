@@ -18,7 +18,7 @@ using RandomNumbers # for better random number generators and also rand!
 import Base: show
 
 include("objectives.jl")
-export NonDiff, OnceDiff, TwiceDiff
+export NonDiffed, OnceDiffed, TwiceDiffed
 
 # make this struct that has scheme and approx
 abstract type QuasiNewton{T1} end
@@ -38,6 +38,7 @@ OptOptions(g_tol, maxiter, show_trace)
 
 abstract type LineSearch end
 include("linesearches/root.jl")
+include("trs_solvers/root.jl")
 
 # Include the actual functions that expose the functionality in this package.
 include("directsearch/directsearch.jl")
