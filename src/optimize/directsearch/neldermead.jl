@@ -143,7 +143,7 @@ function minimize!(obj, x0, method::NelderMead, as::AbstractSimplexer=ABA(x0.*0 
     simplex_value = obj.(simplex_vector)
     order = sortperm(simplex_value)
     simplex = ValuedSimplex(simplex_vector, simplex_value, order)
-    res = minimize!(f, simplex, method; itermax=itermax)
+    res = minimize!(obj, simplex, method; itermax=itermax)
     x0 .= res.minimizer
     return (minimizer=x0, minimum=res.minimum)
 end
@@ -169,7 +169,7 @@ function minimize!(obj, simplex::ValuedSimplex, method::NelderMead, nmcache=NMCa
     α, β, γ, δ = method.parameters(n)
     step_type = "none"
     for iter = 1:itermax
-        iterate!(f, method, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
+        iterate!(obj, method, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
     end
     f_centroid_min = obj(x_centroid)
     f_min, i_f_min = findmin(simplex_value)
@@ -180,7 +180,7 @@ function minimize!(obj, simplex::ValuedSimplex, method::NelderMead, nmcache=NMCa
     end
     (minimizer=x_min, minimum=f_min, centroid=x_centroid, simplex=simplex)
 end
-function iterate!(f, method::NelderMead, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
+function iterate!(obj, method::NelderMead, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
     # Augment the iteration counter
     shrink = false
     n = length(first(simplex_vector))
@@ -276,7 +276,7 @@ end
 #####################
 #    out-of-place   #
 #####################
-function minimize(f, simplex::ValuedSimplex, method::NelderMead; itermax=20000)
+function minimize(obj, simplex::ValuedSimplex, method::NelderMead; itermax=20000)
     simplex_vector, simplex_value = simplex.S, simplex.V
     n = length(first(simplex_vector))
     m = length(simplex_vector)

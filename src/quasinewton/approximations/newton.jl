@@ -1,10 +1,9 @@
 # The simple
-struct Newton{T1, TSeq} <: QuasiNewton{T1}
+struct Newton{T1, Tlin, TSeq} <: QuasiNewton{T1}
    approx::T1
+   linsolve::Tlin
    sequence::TSeq
 end
 # struct DefaultSequence end
-Newton(approx) = Newton(approx, BackTracking())
-Newton(;approx=Direct(), sequence=NWI()) = Newton(approx, sequence)
-
-export Newton
+Newton(approx) = Newton(approx, \, Backtracking())
+Newton(;approx=Direct(), linsolve=\, sequence=NWI()) = Newton(approx, sequence)

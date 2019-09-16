@@ -23,9 +23,9 @@ end
 for T = (Float16, Float32, Float64, Rational{BigInt}, Double32, Double64)
     for M in (SR1, BFGS, DFP, Newton)
         if M == Newton
-            obj = TwiceDiff(myfun)
+            obj = TwiceDiffed(myfun)
         else
-            obj = OnceDiff(myfun)
+            obj = OnceDiffed(myfun)
         end
         res = minimize(obj, T(4), M(Direct()))
         @test all(isa.(res[1:3], T))

@@ -29,7 +29,7 @@ function theta(x)
 end
 
 
-obj! = OnceDiff(f∇f!)
+obj! = OnceDiffed(f∇f!)
 
 minimize!(obj!, -rand(3)*9 .- 3, NLSolvers.NelderMead())
 V = [[1.0,1.0,1.0], [0.0,1.0,1.0],[0.40,0.0,0.0],[-1.0,2.0,.03]]
@@ -37,8 +37,6 @@ F = f∇f!.(nothing, V)
 splx = NLSolvers.ValuedSimplex(V, F)
 minimize!(obj!, splx, NLSolvers.NelderMead())
 @profiler minimize!(obj!, splx, NLSolvers.NelderMead(); itermax=1500)
-
-
 
 
 function powell(∇f, x)
@@ -74,7 +72,7 @@ function powell_optim(F, ∇f, x)
     end
     return fx
 end
-obj_powell = OnceDiff(powell)
+obj_powell = OnceDiffed(powell)
 # Define vertices in V
 x0 = [1.0,1.0,1.0,1.0]
 V = [copy(x0)]
@@ -116,7 +114,7 @@ for i = 1:300
     push!(V, x0+39*rand(length(x0)))
 end
 V
-extros_obj! = OnceDiff(extros!)
+extros_obj! = OnceDiffed(extros!)
 F = extros_obj!.(V)
 splx = NLSolvers.ValuedSimplex(V, F)
 @time minimize!(extros_obj!, splx, NLSolvers.NelderMead(); itermax=3000)

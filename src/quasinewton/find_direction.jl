@@ -1,5 +1,5 @@
-function find_direction(A, ∇f, scheme::QuasiNewton{<:Direct})
-   return -(A\∇f)
+function find_direction(B, ∇f, scheme::QuasiNewton{<:Direct})
+   return -(B\∇f)
 end
 function find_direction(A, ∇f, scheme::QuasiNewton{<:Inverse})
    return -A*∇f

@@ -1,9 +1,9 @@
 function minimize(objective::ObjWrapper, x0, scheme::QuasiNewton, B0=nothing, options=OptOptions())
-    minimize(objective, x0, (scheme, BackTracking()), B0, options)
+    minimize(objective, x0, (scheme, Backtracking()), B0, options)
 end
 function minimize(objective::T1, x0, approach::Tuple{<:Any, <:LineSearch}, B0=nothing,
                   options::OptOptions=OptOptions(),
-                  linesearch::T2 = BackTracking()
+                  linesearch::T2 = Backtracking()
                   ) where {T1<:ObjWrapper, T2}
     x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(objective, approach, x0, copy(x0), B0)
     # first iteration
@@ -32,10 +32,10 @@ function iterate(x, fx::Tf, ∇fx, z, fz, ∇fz, B, approach, objective, options
     ∇fx = copy(∇fz)
 
     # Update current gradient and calculate the search direction
-    d = find_direction(B, ∇fx, scheme) # solve Bd = -∇f
+    d = find_direction(B, ∇fx, scheme) # solve Bd = -∇fx
 
     # # Perform line search along d
-    α, f_α, ls_success = find_steplength(linesearch, objective, d, x, fx, ∇fx, Tf(1.0))
+    α, f_α, ls_success = find_steplength(linesearch, objective, d, x, Tf(1.0), fx, ∇fx)
 
     # # Calculate final step vector and update the state
     s = @. α * d

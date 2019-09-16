@@ -193,7 +193,7 @@ function himmelblau!(∇²f, ∇f, x)
 end
 
 res = minimize!(himmelblau!, copy([2.0,2.0]), Newton(Direct()))
-res = minimize!(himmelblau!, copy([2.0,2.0]), (Newton(Direct()), BackTracking()))
+res = minimize!(himmelblau!, copy([2.0,2.0]), (Newton(Direct()), Backtracking()))
 res = minimize!(himmelblau!, copy([2.0,2.0]), (Newton(Direct()), NWI()))
 ```
 

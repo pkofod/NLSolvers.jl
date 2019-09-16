@@ -12,7 +12,7 @@ function f(G, x)
         return fx
     end
 end
-f_obj = OnceDiff(f)
+f_obj = OnceDiffed(f)
 minimize(f_obj, Point(3.0,3.0), GradientDescent(Inverse()), I, OptOptions())
 minimize(f_obj, Point(3.0,3.0), BFGS(Inverse()), I, OptOptions())
 minimize(f_obj, Point(3.0,3.0), DFP(Inverse()), I, OptOptions())

@@ -1,5 +1,5 @@
 function minimize!(objective::ObjWrapper, x0, scheme::QuasiNewton, B0=nothing, options=OptOptions(), cache=preallocate_qn_caches_inplace(x0))
-    minimize!(objective, x0, (scheme, BackTracking()), B0, options, cache )
+    minimize!(objective, x0, (scheme, Backtracking()), B0, options, cache )
 end
 function minimize!(objective::ObjWrapper, x0, approach::Tuple{<:Any, <:LineSearch}, B0=nothing,
                    options::OptOptions=OptOptions(), # options
@@ -15,7 +15,6 @@ function minimize!(objective::ObjWrapper, x0, approach::Tuple{<:Any, <:LineSearc
     iter = 0
     while iter <= options.maxiter && !is_converged
         iter += 1
-
         # take a step and update approximation
         x, fx, ∇fx, z, fz, ∇fz, B, is_converged = iterate!(cache, x, fx, ∇fx, z, fz, ∇fz, B, approach, objective, options, false)
         if norm(x.-z, Inf) == T(0)
@@ -37,10 +36,10 @@ function iterate!(cache, x, fx::Tf, ∇fx, z, fz, ∇fz, B, approach::Tuple{<:An
     copyto!(∇fx, ∇fz)
 
     # Update current gradient and calculate the search direction
-    d = find_direction!(d, B, ∇fx, scheme) # solve Bd = -∇f
+    d = find_direction!(d, B, ∇fx, scheme) # solve Bd = -∇fx
 
     # Perform line search along d
-    α, f_α, ls_success = find_steplength!(linesearch, objective, d, x, fx, ∇fx, Tf(1.0))
+    α, f_α, ls_success = find_steplength!(linesearch, objective, d, x, Tf(1.0), fx, ∇fx)
 
     # Calculate final step vector and update the state
     @. s = α * d

@@ -4,5 +4,5 @@
 abstract type TRSPSolver end
 abstract type NearlyExactTRSP <: TRSPSolver end
 
-include("subproblemsolvers/NWI.jl")
+include("solvers/NWI.jl")
 #include("subproblemsolvers/TRS.jl") just make an example instead of relying onTRS.jl

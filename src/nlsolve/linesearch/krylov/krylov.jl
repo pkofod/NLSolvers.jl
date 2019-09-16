@@ -42,16 +42,15 @@ struct ResidualKrylov{ForcingType<:ForcingSequence, Tη}
     η₀::Tη
     itermax::Int
 end
+ResidualKrylov(; force_seq=FixedForceTerm(1e-4), eta0 = 1e-4, itermax=300)=ResidualKrylov(force_seq, eta0, itermax)
 # map from method to forcing sequence
 η(fft::ResidualKrylov, info) = η(fft.force_seq, info)
 
 
-ResidualKrylov(; force_seq=FixedForceTerm(1e-4), eta0 = 1e-4, itermax=300)=ResidualKrylov(force_seq, eta0, itermax)
 
 # Default to EisenstatA-values. The paper [[[]]] suggests that γ ≥ 0.7 and
 # ω ≥ (1+sqrt(5))/2
 EisenstatWalkerB() = EisenstatWalkerB(0.1, 1.0, 1+sqrt(5)/2, 0.5)
-
 
 struct ResidualKrylovOp{T1, T2}
     F::T1

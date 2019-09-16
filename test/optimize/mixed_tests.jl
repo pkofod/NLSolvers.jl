@@ -58,9 +58,9 @@ function f∇fs(∇f, x)
         return f(x)
     end
 end
-obj_inplace = OnceDiff(f∇f!)
-obj_outofplace = OnceDiff(f∇f)
-obj_static = OnceDiff(f∇fs)
+obj_inplace = OnceDiffed(f∇f!)
+obj_outofplace = OnceDiffed(f∇f)
+obj_static = OnceDiffed(f∇fs)
 
 x0 = [-1.0, 0.0, 0.0]
 xopt = [1.0, 0.0, 0.0]
@@ -98,12 +98,18 @@ println()
 res = minimize(obj_inplace, x0, BFGS(Inverse()), nothing, OptOptions())
 @test res[4] == 30
 @printf("NN  BFGS    (inverse): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
-res = minimize!(obj_inplace, copy(x0), (BFGS(Inverse()), BackTracking()), nothing, OptOptions())
+res = minimize!(obj_inplace, copy(x0), (BFGS(Inverse()), Backtracking()), nothing, OptOptions())
 @test res[4] == 30
 @printf("NN! BFGS    (inverse): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
+res = minimize!(obj_inplace, copy(x0), (BFGS(Inverse()), TwoPointQuadratic()), nothing, OptOptions())
+@test res[4] == 32
+@printf("NN! BFGS    (inverse, quad): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 res = minimize(obj_static, x0s, BFGS(Inverse()))
 @test res[4] == 30
 @printf("NN  BFGS(S) (inverse): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
+res = minimize(obj_static, x0s, (BFGS(Inverse()), TwoPointQuadratic()))
+@test res[4] == 32
+@printf("NN  BFGS(S) (inverse, quad): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 
 res = minimize(obj_inplace, x0, BFGS(Direct()), nothing, OptOptions())
 @printf("NN  BFGS    (direct): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
@@ -112,8 +118,8 @@ res = minimize!(obj_inplace, copy(x0), BFGS(Direct()), nothing, OptOptions())
 res = minimize(obj_static, x0s, BFGS(Direct()))
 @printf("NN  BFGS(S) (direct): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 println()
-# res = optimize(obj_inplace, copy(x0), Optim.BFGS(linesearch=BackTracking()))
-# @time optimize(obj_inplace, copy(x0), Optim.BFGS(linesearch=BackTracking()))
+# res = optimize(obj_inplace, copy(x0), Optim.BFGS(linesearch=Backtracking()))
+# @time optimize(obj_inplace, copy(x0), Optim.BFGS(linesearch=Backtracking()))
 # @printf("OT! BFGS (inverse): %2.2e  %2.2e\n", norm(Optim.minimizer(res)-xopt,Inf), Optim.g_residual(res))
 
 res = minimize(obj_inplace, x0, DFP(Inverse()))
@@ -157,7 +163,7 @@ res = minimize!(obj_inplace, copy(xrand), GradientDescent(Direct()))
 println()
 res = minimize(obj_inplace, xrand, BFGS(Inverse()))
 @printf("NN  BFGS (inverse): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
-res = minimize!(obj_inplace, copy(xrand), (BFGS(Inverse()), BackTracking()))
+res = minimize!(obj_inplace, copy(xrand), (BFGS(Inverse()), Backtracking()))
 @printf("NN! BFGS (inverse): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 res = minimize(obj_inplace, xrand, BFGS(Direct()))
 @printf("NN  BFGS  (direct): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
@@ -223,9 +229,9 @@ function himmelblau(∇f, x)
     return himmelblau!(g, x)
 end
 
-him_inplace = OnceDiff(himmelblau!)
-him_static = OnceDiff(himmelblaus)
-him_outofplace = OnceDiff(himmelblau)
+him_inplace = OnceDiffed(himmelblau!)
+him_static = OnceDiffed(himmelblaus)
+him_outofplace = OnceDiffed(himmelblau)
 
 println("\nHimmelblau function")
 x0 = [3.0, 1.0]

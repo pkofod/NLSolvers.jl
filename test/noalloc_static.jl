@@ -37,7 +37,7 @@
     end
     sv3 = @SVector[0.0,0.0,0.0]
 
-    fg_static = OnceDiff(fletcher_powell_fg_static; infer=true)
+    fg_static = OnceDiffed(fletcher_powell_fg_static; infer=true)
 
     @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3', OptOptions())
     _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3', OptOptions())

@@ -1,5 +1,7 @@
 module NLSolvers
 
+import Base: show
+
 # We use often use the LinearAlgebra functions dot and norm for operations rela-
 # ted to assessing angles between vectors, size of vectors and so on.
 using LinearAlgebra: dot, I, norm,
@@ -13,9 +15,6 @@ using LinearAlgebra: dot, I, norm,
 
 using RandomNumbers # for better random number generators and also rand!
 
-#using SparseDiffTools
-
-import Base: show
 
 include("objectives.jl")
 export NonDiffed, OnceDiffed, TwiceDiffed
@@ -26,39 +25,39 @@ abstract type QuasiNewton{T1} end
 abstract type HessianApproximation end
 struct Inverse <: HessianApproximation end
 struct Direct <: HessianApproximation end
+export Inverse, Direct
 
 struct OptOptions{T1, T2}
     g_tol::T1
     maxiter::T2
     show_trace::Bool
 end
+export OptOptions
 
 OptOptions(; g_tol=1e-8, maxiter=10000, show_trace=false) =
 OptOptions(g_tol, maxiter, show_trace)
 
+# Globalization strategies
 abstract type LineSearch end
-include("linesearches/root.jl")
-include("trs_solvers/root.jl")
+include("globalization/linesearches/root.jl")
+export backtracking, Backtracking, TwoPointQuadratic
+include("globalization/trs_solvers/root.jl")
+export NWI#, TRSolver
+
+# Quasi-Newton (including Newton and gradient descent) functionality
+include("quasinewton/quasinewton.jl")
+export BFGS, SR1, DFP, GradientDescent, Newton
 
 # Include the actual functions that expose the functionality in this package.
-include("directsearch/directsearch.jl")
-include("linesearch/linesearch.jl")
-include("quasinewton/quasinewton.jl")
-include("trustregions/trustregions.jl")
-include("randomsearch/randomsearch.jl")
+include("optimize/linesearch/linesearch.jl")
+include("optimize/randomsearch/randomsearch.jl")
+include("optimize/directsearch/directsearch.jl")
+include("optimize/trustregions/trustregions.jl")
+export minimize, minimize!, OptProblem
 
-export minimize, minimize!, OptOptions
-export nlsolve, nlsolve!
-export backtracking, BackTracking
-export NWI, TRSolver
-export Inverse, Direct
-
-# Export algos
-export BFGS, SR1, DFP, GradientDescent
-export Newton
+include("nlsolve/root.jl")
+export nlsolve, nlsolve!, NLEProblem
 export ResidualKrylov, ResidualKrylovProblem
 # Forcing Terms
 export FixedForceTerm, DemboSteihaug, EisenstatWalkerA, EisenstatWalkerB
-
-export NLEProblem, OptProblem
 end # module

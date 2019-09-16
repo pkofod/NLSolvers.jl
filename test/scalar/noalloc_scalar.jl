@@ -20,7 +20,7 @@ end
 
 
 @testset "scalar no-alloc" begin
-scalar_obj = TwiceDiff(fourth; infer=true)
+scalar_obj = TwiceDiffed(fourth; infer=true)
 _alloc = @allocated minimize(scalar_obj, 4.0, SR1(Direct()))
 _alloc = @allocated minimize(scalar_obj, 4.0, SR1(Direct()))
 @test _alloc == 0
