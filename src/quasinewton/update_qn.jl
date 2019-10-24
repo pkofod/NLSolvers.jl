@@ -32,7 +32,7 @@ function update_obj!(objective, d, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothi
         Badj = B
     end
     # Quasi-Newton update
-    B = update!(Badj, s, y, scheme)
+    B = update!(scheme, Badj, s, y)
 
     return fz, ∇fz, B
 end
@@ -62,7 +62,7 @@ function update_obj(objective, d, s, ∇fx, z, ∇fz, B, scheme, scale=nothing)
     end
 
     # Quasi-Newton update
-    B = update(Badj, s, y, scheme)
+    B = update(scheme, Badj, s, y)
 
     return fz, ∇fz, B
 end

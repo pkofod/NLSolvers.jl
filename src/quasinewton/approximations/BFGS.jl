@@ -9,51 +9,52 @@
 struct BFGS{T1} <: QuasiNewton{T1}
    approx::T1
 end
+BFGS() = BFGS(Inverse())
 # function update!(scheme::BFGS, B::Inverse, Δx, y)
 #    B.A = B.A + y*y'/dot(Δx, y) - B.A*y*y'*B.A/(y'*B.A*y)
 # end
 
-
-function update!(B, s, y, scheme::BFGS{<:Direct})
+function update!(scheme::BFGS{<:Direct}, B, s, y)
     # We could write this as
     #     B .+= (y*y')/dot(s, y) - (B*s)*(s'*B)/(s'*B*s)
     #     B .+= (y*y')/dot(s, y) - b*b'/dot(s, b)
     # where b = B*s
     # But instead, we split up the calculations. First calculate the denominator
     # in the first term
-    ρ = inv(dot(s,y)) # scalar
+    σ = dot(s, y)
+    ρ = inv(σ) # scalar
     # Then calculate the vector b
     b = B*s # vector temporary
+    sBs = dot(s, b)
     # Calculate one vector divided by dot(s, b)
-    ρbb = inv(dot(s, b))*b
+    ρbb = inv(sBs)*b
     # And calculate
     B .+= (ρ*y)*y' .- ρbb*b'
 end
-function update(B, s, y, scheme::BFGS{<:Direct})
+function update(scheme::BFGS{<:Direct}, B, s, y)
    # As above, but out of place
-   ρ = inv(dot(s, y))
+   σ = dot(s, y)
+   ρ = inv(σ)
    b = B*s
    ρbb = inv(dot(s,b))*b
    B + (ρ*y)*y' - ρbb*b'
 end
-function update(H, s, y, scheme::BFGS{<:Inverse})
-   sy = dot(s, y)
-   ρ = inv(sy)
+function update(scheme::BFGS{<:Inverse}, H, s, y)
+   σ = dot(s, y)
+   ρ = inv(σ)
 
-#   if isfinite(ρ)
-      C = (I - ρ*s*y')
-      H = C*H*C' + ρ*s*s'
-#   end
+   C = (I - ρ*s*y')
+   H = C*H*C' + ρ*s*s'
 
    H
 end
-function update!(H, s, y, scheme::BFGS{<:Inverse})
-   sy = dot(s, y)
-   ρ = inv(sy)
+function update!(scheme::BFGS{<:Inverse}, H, s, y)
+   σ = dot(s, y)
+   ρ = inv(σ)
 
    if isfinite(ρ)
       Hy = H*y
-      H .= H .+ ((sy+y'*Hy).*ρ^2)*(s*s')
+      H .= H .+ ((σ+y'*Hy).*ρ^2)*(s*s')
       Hys = Hy*s'
       Hys .= Hys .+ Hys'
       H .= H .- Hys.*ρ
@@ -72,9 +73,9 @@ end
 #    H
 # end
 
-function update!(A::UniformScaling, s, y, scheme::BFGS{<:Inverse})
-   update(A, s, y, scheme)
+function update!(scheme::BFGS{<:Inverse}, A::UniformScaling, s, y)
+   update(scheme, A, s, y)
 end
-function update!(A::UniformScaling, s, y, scheme::BFGS{<:Direct})
-   update(A, s, y, scheme)
+function update!(scheme::BFGS{<:Direct}, A::UniformScaling, s, y)
+   update(scheme, A, s, y)
 end

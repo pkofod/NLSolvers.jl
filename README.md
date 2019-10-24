@@ -17,7 +17,11 @@ or use the REPL mode to install the package
 
 ## Scalar optimization (w/ different number types)
 ```
-using NLSolvers, Test, DoubleFloats
+using NLSolvers, DoubleFloats
+
+function myfun(x)
+    myfun(nothing, nothing, x)
+end
 
 function myfun(∇f, x)
     myfun(nothing, ∇f, x)
@@ -39,14 +43,14 @@ function myfun(∇²f, ∇f, x::T) where T
        return T(fx), T(∇f), T(∇²f)
    end
 end
-
-
-res = minimize(myfun, Float64(4), BFGS(Inverse()))
-res = minimize(myfun, Double32(4), BFGS(Inverse()))
-res = minimize(myfun, Double64(4), BFGS(Inverse()))
-res = minimize(myfun, Float64(4), Newton(Direct()))
-res = minimize(myfun, Double32(4), Newton(Direct()))
-res = minimize(myfun, Double64(4), Newton(Direct()))
+my_obj_1 = OnceDiffed(myfun)
+res = minimize(my_obj_1, Float64(4), BFGS(Inverse()))
+res = minimize(my_obj_1, Double32(4), BFGS(Inverse()))
+res = minimize(my_obj_1, Double64(4), BFGS(Inverse()))
+my_obj_2 = TwiceDiffed(myfun)
+res = minimize(my_obj_2, Float64(4), Newton())
+res = minimize(my_obj_2, Double32(4), Newton())
+res = minimize(my_obj_2, Double64(4), Newton())
 ```
 ## Multivariate optimization (w/ different number and array types)
 ```
@@ -121,40 +125,45 @@ res = minimize(f∇fs, x0s, DFP(Inverse()))
 
 # Second order optimization
 ```
-using NLSolvers
-function himmelblau!(∇f, x)
-    if !(∇f == nothing)
-        ∇f[1] = 4.0 * x[1]^3 + 4.0 * x[1] * x[2] -
-            44.0 * x[1] + 2.0 * x[1] + 2.0 * x[2]^2 - 14.0
-        ∇f[2] = 2.0 * x[1]^2 + 2.0 * x[2] - 22.0 +
-            4.0 * x[1] * x[2] + 4.0 * x[2]^3 - 28.0 * x[2]
-    end
-
-    fx = (x[1]^2 + x[2] - 11)^2 + (x[1] + x[2]^2 - 7)^2
-    return ∇f == nothing ? fx : (fx, ∇f)
-end
-
-function himmelblau!(∇²f, ∇f, x)
-    if !(∇²f == nothing)
-        ∇²f[1, 1] = 12.0 * x[1]^2 + 4.0 * x[2] - 42.0
-        ∇²f[1, 2] = 4.0 * x[1] + 4.0 * x[2]
-        ∇²f[2, 1] = 4.0 * x[1] + 4.0 * x[2]
-        ∇²f[2, 2] = 12.0 * x[2]^2 + 4.0 * x[1] - 26.0
-    end
-
-
-    if ∇f == nothing && ∇²f == nothing
-        fx = himmelblau!(∇f, x)
+    using NLSolvers
+    function himmelblau!(x)
+        fx = (x[1]^2 + x[2] - 11)^2 + (x[1] + x[2]^2 - 7)^2
         return fx
-    elseif ∇²f == nothing
-        return himmelblau!(∇f, x)
-    else
-        fx, ∇f = himmelblau!(∇f, x)
-        return fx, ∇f, ∇²f
     end
-end
+    function himmelblau!(∇f, x)
+        if !(∇f == nothing)
+            ∇f[1] = 4.0 * x[1]^3 + 4.0 * x[1] * x[2] -
+                44.0 * x[1] + 2.0 * x[1] + 2.0 * x[2]^2 - 14.0
+            ∇f[2] = 2.0 * x[1]^2 + 2.0 * x[2] - 22.0 +
+                4.0 * x[1] * x[2] + 4.0 * x[2]^3 - 28.0 * x[2]
+        end
 
-res = minimize!(himmelblau!, copy([2.0,2.0]), Newton(Direct()))
+        fx = (x[1]^2 + x[2] - 11)^2 + (x[1] + x[2]^2 - 7)^2
+        return ∇f == nothing ? fx : (fx, ∇f)
+    end
+
+    function himmelblau!(∇²f, ∇f, x)
+        if !(∇²f == nothing)
+            ∇²f[1, 1] = 12.0 * x[1]^2 + 4.0 * x[2] - 42.0
+            ∇²f[1, 2] = 4.0 * x[1] + 4.0 * x[2]
+            ∇²f[2, 1] = 4.0 * x[1] + 4.0 * x[2]
+            ∇²f[2, 2] = 12.0 * x[2]^2 + 4.0 * x[1] - 26.0
+        end
+
+        if ∇f == nothing && ∇²f == nothing
+            fx = himmelblau!(∇f, x)
+            return fx
+        elseif ∇²f == nothing
+            return himmelblau!(∇f, x)
+        else
+            fx, ∇f = himmelblau!(∇f, x)
+            return fx, ∇f, ∇²f
+        end
+    end
+
+    res = minimize!(NonDiffed(himmelblau!), copy([2.0,2.0]), NelderMead())
+    res = minimize!(OnceDiffed(himmelblau!), copy([2.0,2.0]), BFGS())
+    res = minimize!(TwiceDiffed(himmelblau!), copy([2.0,2.0]), Newton())
 ```
 
 # Mix'n'match

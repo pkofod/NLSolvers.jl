@@ -15,7 +15,9 @@ using LinearAlgebra: dot, I, norm,
 
 using RandomNumbers # for better random number generators and also rand!
 
+using StaticArrays
 
+include("Manifolds.jl")
 include("objectives.jl")
 export NonDiffed, OnceDiffed, TwiceDiffed
 
@@ -42,16 +44,17 @@ abstract type LineSearch end
 include("globalization/linesearches/root.jl")
 export backtracking, Backtracking, TwoPointQuadratic
 include("globalization/trs_solvers/root.jl")
-export NWI#, TRSolver
+export NWI, Dogleg#, TRSolver
 
 # Quasi-Newton (including Newton and gradient descent) functionality
 include("quasinewton/quasinewton.jl")
-export BFGS, SR1, DFP, GradientDescent, Newton
+export DBFGS, BFGS, SR1, DFP, GradientDescent, Newton
 
 # Include the actual functions that expose the functionality in this package.
 include("optimize/linesearch/linesearch.jl")
 include("optimize/randomsearch/randomsearch.jl")
 include("optimize/directsearch/directsearch.jl")
+export NelderMead
 include("optimize/trustregions/trustregions.jl")
 export minimize, minimize!, OptProblem
 

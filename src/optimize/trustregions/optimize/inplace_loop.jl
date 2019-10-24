@@ -1,35 +1,6 @@
-struct HessianResult
 
-end
-struct GradientResult
-
-end
-struct ValueResult
-
-end
-
-struct MinIterator
-    x
-    fx
-    ∇fx
-    z
-    fz
-    ∇fz
-    B
-    d
-    s
-    y
-    approach
-    options
-end
-
-
-function minimization_iterator(objective, x0, approach, B0)
-    x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(objective, approach, x0, copy(x0), B0)
-    MinIterator(x, fx, ∇fx, z, fz, ∇fz, B, approach, options)
-end
-
-function tr_minimize!(objective, x0, approach, B0, options)
+function tr_minimize!(objective, state0::Tuple, approach::Tuple, options::OptOptions)
+    x0, B0 = state0
     T = eltype(x0)
     Δmin = sqrt(eps(T))
 
@@ -61,7 +32,7 @@ function iterate!(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach, objective, o
     copyto!(x, z)
     copyto!(∇fx, ∇fz)
 
-    spr = subproblemsolver(∇fx, Bx, Δk, p; abstol=1e-10, maxiter=50)
+    spr = subproblemsolver(∇fx, Bx, Δk, p, scheme; abstol=1e-10, maxiter=50)
     Δm = -spr.mz
     # Grab the model value, m. If m is zero, the solution, z, does not improve
     # the model value over x. If the model is not converged, but the optimal

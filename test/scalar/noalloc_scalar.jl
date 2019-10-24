@@ -8,7 +8,7 @@ function fourth(∇²f, ∇f, x)
         ∇f = 4x^3 + cos(x)
     end
 
-    fx = x^4
+    fx = x^4 + sin(x)
     if ∇f == nothing && ∇²f == nothing
         return fx
     elseif ∇²f == nothing
@@ -33,11 +33,11 @@ _alloc = @allocated minimize(scalar_obj, 4.0, DFP(Direct()))
 _alloc = @allocated minimize(scalar_obj, 4.0, DFP(Direct()))
 @test _alloc == 0
 
-_alloc = @allocated minimize(scalar_obj, 4.0, Newton(Direct()))
-_alloc = @allocated minimize(scalar_obj, 4.0, Newton(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, Newton())
+_alloc = @allocated minimize(scalar_obj, 4.0, Newton())
 @test _alloc == 0
 
-_alloc = @allocated minimize(scalar_obj, 4.0, Newton(Direct()))
-_alloc = @allocated minimize(scalar_obj, 4.0, Newton(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, Newton())
+_alloc = @allocated minimize(scalar_obj, 4.0, Newton())
 @test _alloc == 0
 end

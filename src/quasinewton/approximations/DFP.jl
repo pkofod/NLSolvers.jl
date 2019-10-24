@@ -9,15 +9,18 @@ end
 # end
 
 
-function update(H, s, y, scheme::DFP{<:Inverse})
-    ρ = inv(dot(s, y))
+function update(scheme::DFP{<:Inverse}, H, s, y)
+    σ = dot(s, y)
+    ρ = inv(σ)
+
     if ρ > 1e6
         H = H + ρ*s*s' - H*(y*y')*H/(y'*H*y)
     end
     H
 end
-function update(B, s, y, scheme::DFP{<:Direct})
-    ρ = inv(dot(s, y))
+function update(scheme::DFP{<:Direct}, B, s, y)
+    σ = dot(s, y)
+    ρ = inv(σ)
 
     if ρ > 1e6
         C = (I - ρ*y*s')
@@ -29,16 +32,19 @@ function update(B, s, y, scheme::DFP{<:Direct})
     end
     B
 end
-function update!(H, s, y, scheme::DFP{<:Inverse})
-    ρ = inv(dot(s, y))
+function update!(scheme::DFP{<:Inverse}, H, s, y)
+    σ = dot(s, y)
+    ρ = inv(σ)
+    
     if ρ > 1e6
         H .+= ρ*s*s' - H*(y*y')*H/(y'*H*y)
     end
     H
 end
-function update!(B, s, y, scheme::DFP{<:Direct})
-    ρ = inv(dot(s, y))
-    # so right now, we just skip the update if dsy is zero
+function update!(scheme::DFP{<:Direct}, B, s, y)
+    σ = dot(s, y)
+    ρ = inv(σ)
+    # so right now, we just skip the update if σ is zero
     # but we might do something else here
     if ρ > 1e6
         C = (I - ρ*y*s')
@@ -46,5 +52,5 @@ function update!(B, s, y, scheme::DFP{<:Direct})
     end
     B
 end
-update!(A::UniformScaling, s, y , scheme::DFP{<:Inverse}) = update(A, s, y, scheme)
-update!(A::UniformScaling, s, y , scheme::DFP{<:Direct}) = update(A, s, y, scheme)
+update!(scheme::DFP{<:Inverse}, A::UniformScaling, s, y) = update(scheme, A, s, y)
+update!(scheme::DFP{<:Direct},  A::UniformScaling, s, y) = update(scheme, A, s, y)

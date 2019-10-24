@@ -138,7 +138,7 @@ struct ValuedSimplex{TS, TV, TO}
 end
 ValuedSimplex(S, V) = ValuedSimplex(S, V, sortperm(V))
 
-function minimize!(obj, x0, method::NelderMead, as::AbstractSimplexer=ABA(x0.*0 .+ 1); itermax=20000)
+function minimize!(obj::ObjWrapper, x0, method::NelderMead, as::AbstractSimplexer=ABA(x0.*0 .+ 1); itermax=20000)
     simplex_vector = initial_simplex(as, x0)
     simplex_value = obj.(simplex_vector)
     order = sortperm(simplex_value)
@@ -155,7 +155,7 @@ function NMCaches(simplex)
     return (x_reflect=x_reflect, x_cache=x_cache, x_centroid=x_centroid)
 end
 
-function minimize!(obj, simplex::ValuedSimplex, method::NelderMead, nmcache=NMCaches(simplex); itermax=20000)
+function minimize!(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead, nmcache=NMCaches(simplex); itermax=20000)
     simplex_vector, simplex_value, i_order = simplex.S, simplex.V, simplex.O
     n = length(first(simplex_vector))
     m = length(simplex_vector)
@@ -276,7 +276,17 @@ end
 #####################
 #    out-of-place   #
 #####################
-function minimize(obj, simplex::ValuedSimplex, method::NelderMead; itermax=20000)
+
+function minimize(obj::ObjWrapper, x0, method::NelderMead, as::AbstractSimplexer=ABA(x0.*0 .+ 1); itermax=20000)
+    simplex_vector = initial_simplex(as, x0)
+    simplex_value = obj.(simplex_vector)
+    order = sortperm(simplex_value)
+    simplex = ValuedSimplex(simplex_vector, simplex_value, order)
+    res = minimize!(obj, simplex, method; itermax=itermax)
+    x0 .= res.minimizer
+    return (minimizer=x0, minimum=res.minimum)
+end
+function minimize(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead; itermax=20000)
     simplex_vector, simplex_value = simplex.S, simplex.V
     n = length(first(simplex_vector))
     m = length(simplex_vector)

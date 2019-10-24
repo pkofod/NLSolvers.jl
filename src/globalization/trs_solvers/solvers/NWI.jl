@@ -8,7 +8,6 @@
 # feasible. This is implemented directly as in N&W, so we call it NWI.
 
 struct NWI <: NearlyExactTRSP
-
 end
 
 """
@@ -122,7 +121,7 @@ Returns:
     solved - Whether or not a solution was reached (as opposed to
       terminating early due to maxiter)
 """
-function (ms::NWI)(∇f, H, Δ, p; abstol=1e-10, maxiter=50)
+function (ms::NWI)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
     T = eltype(p)
     n = length(∇f)
     Hdiag = diag(H)

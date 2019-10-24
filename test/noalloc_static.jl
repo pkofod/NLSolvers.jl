@@ -39,64 +39,65 @@
 
     fg_static = OnceDiffed(fletcher_powell_fg_static; infer=true)
 
-    @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3', OptOptions())
+    state0 = (@SVector[-0.5, 0.0, 0.0], I+sv3*sv3')
+    @allocated minimize(fg_static, state0, BFGS(Inverse()), OptOptions())
+    _alloc = @allocated minimize(fg_static, state0, BFGS(Inverse()), OptOptions())
     @test _alloc == 0
-    @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3')
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()), I+sv3*sv3')
+    @allocated minimize(fg_static, state0, BFGS(Inverse()))
+    _alloc = @allocated minimize(fg_static, state0, BFGS(Inverse()))
     @test _alloc == 0
-    @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()))
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Inverse()))
-    @test _alloc == 0
-
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3', OptOptions())
-    @test _alloc == 0
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3')
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()), I+sv3*sv3')
-    @test _alloc == 0
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()))
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], BFGS(Direct()))
+    @allocated minimize(fg_static, state0, BFGS(Inverse()))
+    _alloc = @allocated minimize(fg_static, state0, BFGS(Inverse()))
     @test _alloc == 0
 
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3', OptOptions())
+    minimize(fg_static, state0, BFGS(Direct()), OptOptions())
+    _alloc = @allocated minimize(fg_static, state0, BFGS(Direct()), OptOptions())
     @test _alloc == 0
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3')
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()), I+sv3*sv3')
+    minimize(fg_static, state0, BFGS(Direct()))
+    _alloc = @allocated minimize(fg_static, state0, BFGS(Direct()))
     @test _alloc == 0
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()))
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Inverse()))
-    @test _alloc == 0
-
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3', OptOptions())
-    @test _alloc == 0
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3')
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()), I+sv3*sv3')
-    @test _alloc == 0
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()))
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], DFP(Direct()))
+    minimize(fg_static, state0, BFGS(Direct()))
+    _alloc = @allocated minimize(fg_static, state0, BFGS(Direct()))
     @test _alloc == 0
 
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3', OptOptions())
+    minimize(fg_static, state0, DFP(Inverse()), OptOptions())
+    _alloc = @allocated minimize(fg_static, state0, DFP(Inverse()), OptOptions())
     @test _alloc == 0
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3')
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()), I+sv3*sv3')
+    minimize(fg_static, state0, DFP(Inverse()))
+    _alloc = @allocated minimize(fg_static, state0, DFP(Inverse()))
     @test _alloc == 0
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()))
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Inverse()))
+    minimize(fg_static, state0, DFP(Inverse()))
+    _alloc = @allocated minimize(fg_static, state0, DFP(Inverse()))
     @test _alloc == 0
 
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3', OptOptions())
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3', OptOptions())
+    minimize(fg_static, state0, DFP(Direct()), OptOptions())
+    _alloc = @allocated minimize(fg_static, state0, DFP(Direct()), OptOptions())
     @test _alloc == 0
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3')
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()), I+sv3*sv3')
+    minimize(fg_static, state0, DFP(Direct()))
+    _alloc = @allocated minimize(fg_static, state0, DFP(Direct()))
     @test _alloc == 0
-    minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()))
-    _alloc = @allocated minimize(fg_static, @SVector[-0.5, 0.0, 0.0], SR1(Direct()))
+    minimize(fg_static, state0, DFP(Direct()))
+    _alloc = @allocated minimize(fg_static, state0, DFP(Direct()))
+    @test _alloc == 0
+
+    minimize(fg_static, state0, SR1(Inverse()), OptOptions())
+    _alloc = @allocated minimize(fg_static, state0, SR1(Inverse()), OptOptions())
+    @test _alloc == 0
+    minimize(fg_static, state0, SR1(Inverse()))
+    _alloc = @allocated minimize(fg_static, state0, SR1(Inverse()))
+    @test _alloc == 0
+    minimize(fg_static, state0, SR1(Inverse()))
+    _alloc = @allocated minimize(fg_static, state0, SR1(Inverse()))
+    @test _alloc == 0
+
+    minimize(fg_static, state0, SR1(Direct()), OptOptions())
+    _alloc = @allocated minimize(fg_static, state0, SR1(Direct()), OptOptions())
+    @test _alloc == 0
+    minimize(fg_static, state0, SR1(Direct()))
+    _alloc = @allocated minimize(fg_static, state0, SR1(Direct()))
+    @test _alloc == 0
+    minimize(fg_static, state0, SR1(Direct()))
+    _alloc = @allocated minimize(fg_static, state0, SR1(Direct()))
     @test _alloc == 0
 
 end

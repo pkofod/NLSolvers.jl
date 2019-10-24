@@ -1,0 +1,2 @@
+struct SubspaceDogleg <: TRSPSolver
+end

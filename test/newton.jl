@@ -81,21 +81,22 @@ himmelblau_nonmut(∇²f, ∇f, x) = himmelblau!(∇²f, ∇f, x)
     end
     inferredhimmelblau = TwiceDiffed(himmelblau_twicediff; infer=true)
 
-    res = minimize!(TwiceDiffed(himmelblau!), copy([2.0,2.0]), Newton(Direct()))
+    res = minimize!(TwiceDiffed(himmelblau!), copy([2.0,2.0]), Newton())
     @test norm(res[3], Inf) < 1e-8
-    res = minimize(TwiceDiffed(himmelblau_nonmut), copy([2.0,2.0]), Newton(Direct()))
+    res = minimize(TwiceDiffed(himmelblau_nonmut), copy([2.0,2.0]), Newton())
     @test norm(res[3], Inf) < 1e-8
 
     @testset "newton static" begin
         sl = @SVector([0.0,0.0])
-        res = minimize(inferredhimmelblau, @SVector([2.0,2.0]), Newton(Direct()), I+sl*sl', OptOptions())
-        _alloc = @allocated minimize(inferredhimmelblau, @SVector([2.0,2.0]), Newton(Direct()), I+sl*sl', OptOptions())
+        state0 = (@SVector([2.0,2.0]), I+sl*sl')
+        res = minimize(inferredhimmelblau, state0, Newton(), OptOptions())
+        _alloc = @allocated minimize(inferredhimmelblau, state0, Newton(), OptOptions())
         @test _alloc == 0
         @test norm(res[3], Inf) < 1e-8
-        _res = minimize(inferredhimmelblau, @SVector([2.0,2.0]), (Newton(Direct()), Backtracking()), I+sl*sl', OptOptions())
-        _alloc = @allocated minimize(inferredhimmelblau, @SVector([2.0,2.0]), (Newton(Direct()), Backtracking()), I+sl*sl', OptOptions())
+        _res = minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), OptOptions())
+        _alloc = @allocated minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), OptOptions())
         @test _alloc == 0
-        _alloc = @allocated minimize(inferredhimmelblau, @SVector([2.0,2.0]), (Newton(Direct()), Backtracking()), I+sl*sl', OptOptions())
+        _alloc = @allocated minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), OptOptions())
         @test _alloc == 0
         @test norm(res[3], Inf) < 1e-8
     end

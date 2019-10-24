@@ -5,5 +5,4 @@ struct Newton{T1, Tlin, TSeq} <: QuasiNewton{T1}
    sequence::TSeq
 end
 # struct DefaultSequence end
-Newton(approx) = Newton(approx, \, Backtracking())
-Newton(;approx=Direct(), linsolve=\, sequence=NWI()) = Newton(approx, sequence)
+Newton(;approx=Direct(), linsolve=\, sequence=NWI()) = Newton(approx, linsolve, sequence)
