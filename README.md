@@ -1,5 +1,5 @@
 # NLSolvers
-Still under construction, so stuff will break (and improve!)
+Still under construction, so stuff will break (and improve!). Feel free to reach out with ideas and requests.
 
 ## Installation
 Installing NLSolvers is easy, simply write
