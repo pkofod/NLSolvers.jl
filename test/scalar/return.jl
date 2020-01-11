@@ -2,22 +2,16 @@ using NLSolvers, Test, DoubleFloats
 function myfun(∇f, x)
     myfun(nothing, ∇f, x)
 end
-function myfun(∇²f, ∇f, x::T) where T
+function myfun(∇²f, ∇f, x::T) where T<:Real
     if !(∇²f == nothing)
-        ∇²f = 12x^2 - sin(x)
+        ∇²f = T(12*x^2 - sin(x))
     end
     if !(∇f == nothing)
-        ∇f = 4x^3 + cos(x)
+        ∇f = T(4*x^3 + cos(x))
     end
 
-    fx = x^4 +sin(x)
-    if ∇f == nothing && ∇²f == nothing
-        return T(fx)
-    elseif ∇²f == nothing
-        return T(fx), T(∇f)
-    else
-        return T(fx), T(∇f), T(∇²f)
-    end
+    fx = T(x^4 + sin(x))
+    objective_return(T(fx), ∇f, ∇²f)
 end
 @testset "scalar return types" begin
 for T = (Float16, Float32, Float64, Rational{BigInt}, Double32, Double64)

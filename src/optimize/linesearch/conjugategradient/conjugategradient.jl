@@ -1,3 +1,4 @@
+# Might consider Daniel 1967 that uses second order
 # Make them inputs to a CG type
 abstract type CGUpdate end
 struct ConjugateGradient{Tu}
@@ -16,10 +17,12 @@ end
 HZ() = HZ(1/100)
 function _β(cg::HZ, d, ∇fz, ∇fx, y)
 	T = eltype(∇fz)
-	η = T(cg.η)
+
 	ddy = dot(d, y)
 	βN = dot(y.-T(2).*d.*norm(y)^2/ddy, ∇fz)/ddy
-	ηk = -inv(norm(d)*min(η, norm(∇fx)))
+
+	ηk = -inv(norm(d)*min(T(cg.η), norm(∇fx)))
+
 	βkp1 = max(βN, ηk)
 end
 
@@ -54,11 +57,21 @@ _β(::VPRP, d, ∇fz, ∇fx, y) = (norm(∇fz)^2-norm(∇fz)/norm(∇fx)*dot(∇
 
 
 # using an "intial vectors" function we can initialize s if necessary or nothing if not to save on vectors
-function minimize(obj::OnceDiffed, x0, cg::ConjugateGradient, linesearch = HZAW(); maxiter=100)
-    Tx=eltype(x0)
+minimize!(obj::ObjWrapper, x0, cg::ConjugateGradient; maxiter=100) =
+  _minimize(obj, x0, (cg, HZAW()), InPlace(); maxiter=maxiter)
+minimize!(obj::ObjWrapper, x0, approach::Tuple{<:ConjugateGradient, <:LineSearch}; maxiter=100) =
+  _minimize(obj, x0, approach, InPlace(); maxiter=maxiter)
+minimize(obj::ObjWrapper, x0, cg::ConjugateGradient; maxiter=100) =
+  _minimize(obj, x0, (cg, HZAW()), OutOfPlace(); maxiter=maxiter)
+minimize(obj::ObjWrapper, x0, approach::Tuple{<:ConjugateGradient, <:LineSearch}; maxiter=100) =
+  _minimize(obj, x0, approach, OutOfPlace(); maxiter=maxiter)
+
+function _minimize(obj::ObjWrapper, x0, approach::Tuple{<:ConjugateGradient, <:LineSearch}, mstyle::MutateStyle; maxiter=100)
+
+	Tx=eltype(x0)
+	cg, linesearch = approach
 
     fx, ∇fx = obj(x0, copy(x0))
-	Tf = typeof(fx)
 
     fz = fx
 	α = Tx(0)
@@ -70,23 +83,34 @@ function minimize(obj::OnceDiffed, x0, cg::ConjugateGradient, linesearch = HZAW(
     while norm(∇fx, Inf) ≥ 1e-8 && k ≤ maxiter
 		# Set up line search
         α_0 = initial(cg.update, a-> obj(x.+a.*d), α, k, x, fx, dot(d, ∇fx), ∇fx)
-		φ = LineObjective!(obj, ∇fz, z, x, d, fx, dot(∇fx, d))
+		φ = _lineobjective(mstyle, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
 
 		# Perform line search
-		α, f_α, ls_success = find_steplength(linesearch, φ, Tf(1.0))
+		α, f_α, ls_success = find_steplength(linesearch, φ, Tx(1.0))
 		# move in direction
-		@. z = x + α*d
-        fz, ∇fz = obj(z, ∇fz)
+		if mstyle isa InPlace
+			@. z = x + α*d
+        	fz, ∇fz = obj(z, ∇fz)
+        	@. y = ∇fz - ∇fx
+			βkp1 = _β(cg.update, d, ∇fz, ∇fx, y)
+			fx = fz
+			x .= z
+			∇fx .= ∇fz
 
-        @. y = ∇fz - ∇fx
+			@. d = -∇fx + βkp1*d
+			k = k+1
+		elseif mstyle isa OutOfPlace
+			z = @. x + α*d
+			fz, ∇fz = obj(z, ∇fz)
+			y = @. ∇fz - ∇fx
+			βkp1 = _β(cg.update, d, ∇fz, ∇fx, y)
+			fx = fz
+			x = copy(z)
+			∇fx = copy(∇fz)
 
-        βkp1 = _β(cg.update, d, ∇fz, ∇fx, y)
-        fx = fz
-        x .= z
-        ∇fx .= ∇fz
-
-        @. d = -∇fx + βkp1*d
-        k = k+1
+			d = @. -∇fx + βkp1*d
+			k = k+1
+		end
     end
     x, fx, ∇fx, k
 end
@@ -101,18 +125,19 @@ function initial(cg, φ, α, k, x, φ₀, dφ₀, ∇fx)
         if !all(x .≈ T(0)) # should we define "how approx we want?"
             return ψ₀ * norm(x, Inf)/norm(∇fx, Inf)
         elseif !(φ₀ ≈ T(0))
-            return ψ₀ * abs(φ₀)/norm(∇fx, Inf)
+            return ψ₀ * abs(φ₀)/norm(∇fx, 2)^2
         else
             return T(1)
         end
     elseif quadstep
         R = ψ₁*α
         φR = φ(R)
-        c = (φR - φ₀ - dφ₀*R)/R^2
-
-        if c > 0
-	       return -dφ₀/(T(2)*c) # > 0 by df0 < 0 and c > 0
-        end
+		if φR ≤ φ₀
+	        c = (φR - φ₀ - dφ₀*R)/R^2
+	        if c > 0
+		       return -dφ₀/(T(2)*c) # > 0 by df0 < 0 and c > 0
+	        end
+		end
     end
     return ψ₂*α
 end

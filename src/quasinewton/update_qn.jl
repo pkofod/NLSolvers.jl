@@ -1,5 +1,3 @@
-import Base.circshift!
-
 struct QNCache{T1, T2}
     y::T1 # change in successive gradients
     d::T2 # search direction

@@ -1,5 +1,5 @@
 
-function tr_minimize!(objective, state0::Tuple, approach::Tuple, options::OptOptions)
+function tr_minimize!(objective, state0::Tuple, approach::Tuple{<:QuasiNewton, <:TRSPSolver}, options::OptOptions)
     x0, B0 = state0
     T = eltype(x0)
     Δmin = sqrt(eps(T))
@@ -7,12 +7,11 @@ function tr_minimize!(objective, state0::Tuple, approach::Tuple, options::OptOpt
     x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(objective, approach, x0, copy(x0), B0)
     p = copy(x)
 
-    Δk = T(5.0)
+    Δk = T(20.0)
 
     x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, accept, is_converged = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δk, approach, objective, options)
 
-    iter = 0
-    is_converged = false
+    iter = 1
     while iter <= options.maxiter && !is_converged
         iter += 1
         x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, accept, is_converged = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, approach, objective, options)

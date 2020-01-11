@@ -1,2 +1,2 @@
 include("conjugategradient.jl")
-export HagerZhang
+export ConjugateGradient

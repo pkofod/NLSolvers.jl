@@ -32,33 +32,49 @@
 
 abstract type AbstractBacktracking end
 abstract type BacktrackingInterp end
+
 """
-    _safe_α(α_cand, α_curr, c, ratio)
+  _safe_α(α_cand, α_curr, c, ratio)
+
 Returns the safeguarded value of α in a Amijo
 backtracking line search.
 
 σ restriction 0 < c < ratio < 1
 """
 function _safe_α(α_cand, α_curr, decrease=0.1, ratio=0.5)
-    α_cand < decrease*α_curr && return decrease*α_curr
-    α_cand > ratio*α_curr && return ratio*α_curr
-
-	α_cand # if the candidate is in the interval, just return it
+  α_cand < decrease*α_curr && return decrease*α_curr
+  α_cand > ratio*α_curr && return ratio*α_curr
+  
+  α_cand # if the candidate is in the interval, just return it
 end
 
+"""
+  Backtracking(;)
 
-struct Backtracking{T1, T2, T3} <: LineSearch
+???
+"""
+struct Backtracking{T1, T2, T3, TR} <: LineSearch
     ratio::T1
 	decrease::T1
 	maxiter::T2
 	interp::T3
+	steprange::TR
 	verbose::Bool
 end
-Backtracking(; ratio=0.5, decrease=1e-4, maxiter=50, interp=FixedInterp(), verbose=false) = Backtracking(ratio, decrease, maxiter, interp, verbose)
+Backtracking(; ratio=0.5, decrease=1e-4, maxiter=50,
+	           steprange=(0.0, Inf), interp=FixedInterp(),
+	           verbose=false) =
+ Backtracking(ratio, decrease, maxiter, steprange, interp, verbose)
 
 struct FixedInterp <: BacktrackingInterp end
 struct FFQuadInterp <: BacktrackingInterp end
 
+"""
+  interpolate(itp::BacktrackingInterp, ...)
+
+Calculates the minimizer of a polynomial approximation to the line restricted
+objective function.
+"""
 function interpolate(itp::FixedInterp, φ, φ0, dφ0, α, f_α, ratio)
 	β = α
 	α = ratio*α
@@ -71,7 +87,7 @@ end
 # f(α) = ||F(xₙ+αdₙ)||²₂
 # f(0) = ||F(xₙ)||²₂
 # f'(0) = 2*(F'(xₙ)'dₙ)'F(xₙ) = 2*F(xₙ)'*(F'(xₙ)*dₙ) < 0
-# if f'(0) >= 0, then dₙ does is not a descent direction
+# if f'(0) >= 0, then dₙ  is not a descent direction
 # for the merit function. This can happen for broyden
 
 # two-point parabolic
@@ -103,7 +119,7 @@ end
 """
     find_steplength(---)
 
-Returns a step length, (merit) function value at step length and succes flag.
+Returns a step length, (merit) function value at step length and success flag.
 """
 function find_steplength(ls::Backtracking, φ::T, λ) where T
  	#== unpack ==#

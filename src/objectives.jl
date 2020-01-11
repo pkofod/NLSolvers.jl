@@ -64,18 +64,23 @@ function (le::LineObjective!)(λ, calc_grad::Bool)
     f, g = (le.obj(retract!(_manifold(le.obj), le.z, le.x, le.d, λ), le.∇fz))
     f, dot(g, le.d)
 end
-struct LineObjective{T1, T2, T3, T4}
+struct LineObjective{T1, T2, T3, T4, T5}
     obj::T1
-    x::T2
-    d::T3
-    φ0::T4
-    dφ0::T4
+    ∇fz::T2
+    z::T3
+    x::T3
+    d::T4
+    φ0::T5
+    dφ0::T5
 end
 (le::LineObjective)(λ)=(le.obj(retract(_manifold(le.obj), le.x, le.d, λ)))
 function (le::LineObjective)(λ, calc_grad::Bool)
-    f, g = le.obj(retract(_manifold(le.obj), le.x, le.d, λ), true)
+    f, g = le.obj(retract(_manifold(le.obj), le.x, le.d, λ), ∇fz)
     f, dot(g, le.d)
 end
+
+_lineobjective(mstyle::InPlace, obj, ∇fz, z, x, d, φ0, dφ0) = LineObjective!(obj, ∇fz, z, x, d, φ0, dφ0)
+_lineobjective(mstyle::OutOfPlace, obj, ∇fz, z, x, d, φ0, dφ0) = LineObjective(obj, ∇fz, z, x, d, φ0, dφ0)
 
 struct MeritObjective{T1, T2, T3, T4}
   F::T1

@@ -1,1 +1,1 @@
-include("quasinewton.jl")
+include("newton.jl")

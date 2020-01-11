@@ -6,5 +6,5 @@ abstract type NearlyExactTRSP <: TRSPSolver end
 
 include("solvers/NWI.jl")
 include("solvers/dogleg.jl")
-include("solvers/CGT.jl")
+include("solvers/NTR.jl")
 #include("subproblemsolvers/TRS.jl") just make an example instead of relying onTRS.jl

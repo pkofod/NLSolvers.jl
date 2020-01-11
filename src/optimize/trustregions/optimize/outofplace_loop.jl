@@ -7,8 +7,7 @@ function tr_minimize(objective, x0, approach, B0, options)
     Δk = T(10.0)
 
     x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept, is_converged = iterate(p, x, fx, ∇fx, z, fz, ∇fz, B, Δk, approach, objective, options)
-    iter = 0
-    is_converged = false
+    iter = 1
     while iter <= options.maxiter && !is_converged
         iter += 1
         x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept, is_converged = iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, approach, objective, options)

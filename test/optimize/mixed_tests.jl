@@ -26,16 +26,15 @@ function f∇f!(∇f, x)
     end
 
     fx = f(x)
-    return ∇f==nothing ? fx : (fx, ∇f)
+    objective_return(fx, ∇f)
 end
 
 function f∇f(∇f, x)
     if !(∇f == nothing)
-        gx = similar(x)
-        return f∇f!(gx, x)
-    else
-        return f∇f!(∇f, x)
+        ∇f = similar(x)
     end
+    fx, ∇f = f∇f!(gx, x)
+    objective_return(fx, ∇f)
 end
 function f∇fs(∇f, x)
     if !(∇f == nothing)
@@ -53,10 +52,8 @@ function f∇fs(∇f, x)
             200.0*(sqrt(x[1]^2+x[2]^2)-1)*x[2]/sqrt( x[1]^2+x[2]^2 )
         s3 = 200.0*(x[3]-10.0*theta(x)) + 2.0*x[3]
         ∇f = @SVector [s1, s2, s3]
-        return f(x), ∇f
-    else
-        return f(x)
     end
+    objective_return(f(x), ∇f)
 end
 obj_inplace = OnceDiffed(f∇f!)
 obj_outofplace = OnceDiffed(f∇f)
@@ -90,25 +87,25 @@ res = minimize(obj_static, x0s, GradientDescent(Inverse()))
 @printf("NN  GD(S) (inverse): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 
 printed_minimize(obj_inplace, x0, GradientDescent(Direct()))
-printed_minimize!(obj_inplace, copy(x0), GradientDescent(Direct()))
+printed_minimize!(obj_inplace, copy(x0), GradientDescent())
 res = minimize(obj_static, x0s, GradientDescent(Direct()))
 @printf("NN  GD(S)  (direct): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 println()
 
 res = minimize(obj_inplace, x0, BFGS(Inverse()), OptOptions())
-@test res[4] == 30
+@test res[4] == 31
 @printf("NN  BFGS    (inverse): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 res = minimize!(obj_inplace, copy(x0), (BFGS(Inverse()), Backtracking()), OptOptions())
-@test res[4] == 30
+@test res[4] == 31
 @printf("NN! BFGS    (inverse): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 res = minimize!(obj_inplace, copy(x0), (BFGS(Inverse()), Backtracking(interp=FFQuadInterp())), OptOptions())
-@test res[4] == 32
+@test res[4] == 33
 @printf("NN! BFGS    (inverse, quad): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 res = minimize(obj_static, x0s, BFGS(Inverse()))
-@test res[4] == 30
+@test res[4] == 31
 @printf("NN  BFGS(S) (inverse): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 res = minimize(obj_static, x0s, (BFGS(Inverse()), Backtracking(interp=FFQuadInterp())))
-@test res[4] == 32
+@test res[4] == 33
 @printf("NN  BFGS(S) (inverse, quad): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 
 res = minimize(obj_inplace, x0, BFGS(Direct()), OptOptions())
@@ -225,21 +222,20 @@ function himmelblau!(∇f, x)
     end
 
     fx = (x[1]^2 + x[2] - 11)^2 + (x[1] + x[2]^2 - 7)^2
-    return ∇f == nothing ? fx : (fx, ∇f)
+    objective_return(fx, ∇f)
 end
 
 
 function himmelblaus(∇f, x)
-    f = (x[1]^2 + x[2] - 11)^2 + (x[1] + x[2]^2 - 7)^2
+    fx = (x[1]^2 + x[2] - 11)^2 + (x[1] + x[2]^2 - 7)^2
     if !(∇f == nothing)
         ∇f1 = 4.0 * x[1]^3 + 4.0 * x[1] * x[2] -
             44.0 * x[1] + 2.0 * x[1] + 2.0 * x[2]^2 - 14.0
         ∇f2 = 2.0 * x[1]^2 + 2.0 * x[2] - 22.0 +
             4.0 * x[1] * x[2] + 4.0 * x[2]^3 - 28.0 * x[2]
-        return f, @SVector([∇f1, ∇f2])
-    else
-        return f
+        ∇f = @SVector([∇f1, ∇f2])
     end
+    objective_return(fx, ∇f)
 end
 
 function himmelblau(∇f, x)

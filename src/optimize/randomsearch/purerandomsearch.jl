@@ -15,8 +15,9 @@ function.
 
 """
 
-struct PureRandomSearch{T}
+struct PureRandomSearch{T, P}
     draw::T
+    parstyle::P
 end
 
 function PureRandomSearch(; draw=nothing, lb=nothing, ub=nothing)

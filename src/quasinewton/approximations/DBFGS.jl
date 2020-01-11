@@ -3,8 +3,8 @@ struct DBFGS{T1, T2} <: QuasiNewton{T1}
    theta::T2
 end
 
-DBFGS(approx) = DBFGS(;approx=approx)
-DBFGS(;approx=Inverse(), theta=0.2) = DBFGS(approx, theta)
+DBFGS(approx) = DBFGS(approx, 0.2)
+DBFGS(;inverse=true, theta=0.2) = DBFGS(inverse ? Inverse() : Direct(), theta)
 
 
 function update!(scheme::DBFGS{<:Direct, <:Any}, B, s, y)

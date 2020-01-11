@@ -1,11 +1,4 @@
-# [MORESORENSEN] Computing a trust region step
-# This file contains a Newton Trust Region Subproblem solver based on
-# [MORESORENSEN] and [N&W]. In the latter it's called the "iterative" solution
-# method, and the method is a near-exact solution method. It's popular and ef-
-# ficient even in cases that are problematic (known as the "hard case" after
-# [MORESORENSEN]) that are not guaranteed to be solved (at all or quickly)
-# by older methods. The method is appropriate if factorization is fast and
-# feasible. This is implemented directly as in N&W, so we call it NWI.
+# This is implemented directly as in N&W, so we call it NWI.
 
 struct NWI <: NearlyExactTRSP
 end
@@ -127,7 +120,7 @@ function (ms::NWI)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
     Hdiag = diag(H)
     # Note that currently the eigenvalues are only sorted if H is perfectly
     # symmetric.  (Julia issue #17093)
-    QΛQ = eigen(Symmetric(H))
+    QΛQ = H isa Diagonal ? eigen(H) : eigen(Symmetric(H))
     Q, Λ = QΛQ.vectors, QΛQ.values
     λmin, λmax = Λ[1], Λ[n]
 
@@ -211,7 +204,7 @@ function (ms::NWI)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
             @inbounds H[i, i] = Hdiag[i] + λ
         end
 
-        R = cholesky(Hermitian(H)).U
+        R = H isa Diagonal ? cholesky(H).U : cholesky(Hermitian(H)).U
         p .= R \ (R' \ -∇f)
         q_l = R' \ p
 
@@ -220,7 +213,7 @@ function (ms::NWI)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
         λ += λ_update
 
         # Check that λ is not less than λ_lb, and if so, go
-        # half the way to λ_lb.
+        # half the way to λ_lb. (This should be geometric mean)
         if λ < λ_lb
             λ = T(1)/2 * (λ_previous - λ_lb) + λ_lb
         end

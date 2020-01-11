@@ -10,12 +10,7 @@ function himmelblau(∇f, x)
     end
 
     fx = (x[1]^2 + x[2] - 11)^2 + (x[1] + x[2]^2 - 7)^2
-
-    if ∇f == nothing
-        return fx
-    else
-        return fx, ∇f
-    end
+    objective_return(fx, ∇f)
 end
 
 function himmelblau!(∇f, x)
