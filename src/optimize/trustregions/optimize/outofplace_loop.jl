@@ -2,21 +2,23 @@ function tr_minimize(objective, x0, approach, B0, options)
     T = eltype(x0)
 
     x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(objective, approach, x0, copy(x0), B0)
+    ∇f0 = norm(∇fz, Inf)
+
     p = copy(x)
 
     Δk = T(10.0)
 
-    x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept, is_converged = iterate(p, x, fx, ∇fx, z, fz, ∇fz, B, Δk, approach, objective, options)
+    x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept, is_converged = iterate(p, x, fx, ∇fx, z, fz, ∇fz, B, Δk, approach, objective, options, ∇f0)
     iter = 1
     while iter <= options.maxiter && !is_converged
         iter += 1
-        x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept, is_converged = iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, approach, objective, options)
+        x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept, is_converged = iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, approach, objective, options, ∇f0)
     end
     return z, fz, ∇fz, iter
 end
 
 
-function iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach, objective, options; scale=false)
+function iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach, objective, options, ∇f0; scale=false)
     T = eltype(x)
 
     scheme, subproblemsolver = approach
@@ -94,7 +96,7 @@ function iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach, objective, op
         end
         accept = true
     end
-    is_converged = converged(z, ∇fz, options.g_tol)
+    is_converged = converged(z, ∇fz, ∇f0, options)
 
     return x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept, is_converged
 end

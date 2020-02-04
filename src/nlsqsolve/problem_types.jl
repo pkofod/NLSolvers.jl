@@ -1,6 +1,5 @@
 """
   NLsqProblem(residuals)
-  NLsqProblem(residuals, opt)
 
 An NLsqProblem (Non-linear Least squares Problem), is used to represent the
 mathematical problem of finding the smallest possible sum of squared values of
@@ -15,9 +14,8 @@ The package NLSolversAD.jl adds automatic conversion of problems to match algori
 that require higher order derivates than provided by the user. It also adds AD
 constructors for a target number of derivatives.
 """
-struct NLsqProblem{R<:ObjWrapper, Opt<:NEqOptions}
+struct NLsqProblem{R<:ObjWrapper}
   residuals::R
-  options::Opt
 end
 
 struct NLsqOptions{Tmi}

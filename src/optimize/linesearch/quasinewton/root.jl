@@ -23,8 +23,8 @@ function prepare_variables(objective, approach, x0, ∇fz, B)
     return x, fx, ∇fx, z, fz, ∇fz, B
 end
 
-function converged(z, ∇fz, g_tol)
-    g_converged = norm(∇fz) < g_tol
+function converged(z, ∇fz, ∇f0, options)
+    g_converged = norm(∇fz) ≤ options.g_abstol || norm(∇fz) ≤ ∇f0*options.g0_reltol
     return g_converged || any(isnan.(z))
 end
 

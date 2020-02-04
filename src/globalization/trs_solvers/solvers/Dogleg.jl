@@ -44,11 +44,13 @@ function (dogleg::Dogleg)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
             # any numerical analysis text book) See [NW, p. 75] for the expression
             # giving rise to the quadratic equation
             dot_cachy_qn = dot(d_cauchy, d_qn)
+
             # a is ||d_c - d_n||^2 expanded into scalar operations
             a = norm_d_cauchy^2 + norm_d_qn^2 - 2*dot_cachy_qn
             b = -dot_cachy_qn * norm_d_cauchy^2
             c = norm_d_cauchy^2 - Δ^2 # move the rhs over
             q = -(b + sign(b)*√(b^2-4*a*c))/2
+            
             # since we know that c is necessarily negative (since d_cauchy was
             # not at the border) the discriminant is positive, and there are two
             # roots - pick the positive one. There has to be one positive and one

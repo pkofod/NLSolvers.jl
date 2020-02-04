@@ -31,6 +31,25 @@ derivative_source(od::OnceDiffed{<:Any, <:Any, Nothing}) = "user supplied"
 (od::OnceDiffed)(x, F, J) = od.obj(J, F, x)
 (od::OnceDiffed)(x, y, z, args...) = throw(ArgumentError("OnceDiffed cannot be called with more than three arguements."))
 
+struct OnceDiffedJv{TR, TJv, Tman<:Manifold, TAD} <: ObjWrapper
+    R::TR # residual
+    Jv::TJv # jacobian vector product operator
+    manifold::Tman
+    source::TAD
+    function OnceDiffedJv(f, jv, manifold=Euclidean(0); infer=false)
+        source = nothing # no AD gradient
+        Tsource = Nothing # no AD gradient
+        inferred_r = infer ? typeof(f) : Any
+        inferred_jv = infer ? typeof(jv) : Any
+        return new{inferred_r, inferred_jv, typeof(manifold), Nothing}(f, jv, manifold, source)
+    end
+end
+derivative_source(od::OnceDiffedJv{<:Any, <:Any, <:Any, Nothing}) = "user supplied"
+(od::OnceDiffedJv)(x) = od.R(nothing, x)
+(od::OnceDiffedJv)(x, ∇f) = od.R(∇f, x)
+(od::OnceDiffedJv)(x, F, J) = od.R(J, F, x)
+(od::OnceDiffedJv)(x, y, z, args...) = throw(ArgumentError("OnceDiffedJv cannot be called with more than three arguements."))
+
 ########
 ## C² ##
 ########
@@ -75,7 +94,7 @@ struct LineObjective{T1, T2, T3, T4, T5}
 end
 (le::LineObjective)(λ)=(le.obj(retract(_manifold(le.obj), le.x, le.d, λ)))
 function (le::LineObjective)(λ, calc_grad::Bool)
-    f, g = le.obj(retract(_manifold(le.obj), le.x, le.d, λ), ∇fz)
+    f, g = le.obj(retract(_manifold(le.obj), le.x, le.d, λ), le.∇fz)
     f, dot(g, le.d)
 end
 

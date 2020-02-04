@@ -11,7 +11,7 @@ function nlsolve!(F::OnceDiffed, x, approach::Tuple{<:Newton, <:Dogleg}; maxiter
         if Jx isa Nothing
             return f, Jx'*Fx
         else
-            # As you may notice, this can be expensive... Bbecause the gradient
+            # As you may notice, this can be expensive... Because the gradient
             # is going to be very simple. May want to create a
             # special type or way to hook into trust regions here. WWe can exploit
             # that we only need the cauchy and the newton steps, not any shifted

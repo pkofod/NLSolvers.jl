@@ -28,15 +28,20 @@ function theta(x)
   end
 end
 
-
+#= test solve interface =#
 obj! = OnceDiffed(f∇f!)
+nm_prob! = MinProblem(obj=obj!)
+solve!(nm_prob!, rand(3), NelderMead())
+
 
 minimize!(obj!, -rand(3)*9 .- 3, NLSolvers.NelderMead())
 V = [[1.0,1.0,1.0], [0.0,1.0,1.0],[0.40,0.0,0.0],[-1.0,2.0,.03]]
 F = f∇f!.(nothing, V)
+
 splx = NLSolvers.ValuedSimplex(V, F)
+
 minimize!(obj!, splx, NLSolvers.NelderMead())
-@profiler minimize!(obj!, splx, NLSolvers.NelderMead(); itermax=1500)
+solve!(nm_prob!, splx)
 
 
 function powell(∇f, x)
@@ -90,7 +95,7 @@ splx = NLSolvers.ValuedSimplex(V, F)
 using Optim
 res = optimize(Optim.only_fg!(powell_optim), copy(x0), NelderMead())
 res = optimize(Optim.only_fg!(powell_optim), copy(x0), Optim.GradientDescent())
-@time optimize(Optim.only_fg!(powell_optim), x0, NelderMead(), Optim.Options(g_tol=0, iterations =3000))
+@time optimize(Optim.only_fg!(powell_optim), x0, NelderMead(), Optim.Options(g_abstol=0, iterations =3000))
 
 
 function extros!(storage, x::AbstractArray)

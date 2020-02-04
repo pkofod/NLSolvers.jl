@@ -13,6 +13,7 @@ function initial_safeguards(B, g, Δ)
     # equations are on p. 560 of [MORESORENSEN]
     T = eltype(g)
     λS = maximum(-diag(B))
+
     # they state on the first page that ||⋅|| is the Euclidean norm
     gnorm = norm(g)
     Bnorm = opnorm(B, 1)
@@ -28,6 +29,7 @@ function safeguard_λ(λ::T, λsg) where T
     end
     λ
 end
+
 """
     is_maybe_hard_case(QΛQ, Qt∇f)
 
@@ -123,7 +125,6 @@ function (ms::NWI)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
     QΛQ = H isa Diagonal ? eigen(H) : eigen(Symmetric(H))
     Q, Λ = QΛQ.vectors, QΛQ.values
     λmin, λmax = Λ[1], Λ[n]
-
     # Cache the inner products between the eigenvectors and the gradient.
     Qt∇f = Q' * ∇f
 
@@ -196,10 +197,8 @@ function (ms::NWI)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
     λ = λ + sqrt(eps(T))
     isg = initial_safeguards(H, ∇f, Δ)
     λ = safeguard_λ(λ, isg)
-
     for iter in 1:maxiter
         λ_previous = λ
-
         for i = 1:n
             @inbounds H[i, i] = Hdiag[i] + λ
         end
@@ -226,6 +225,5 @@ function (ms::NWI)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
         @inbounds H[i, i] = Hdiag[i]
     end
     m = dot(∇f, p) + dot(p, H * p)/2
-
     return (p=p, mz=m, interior=interior, λ=λ, hard_case=hard_case, solved=solved, Δ=Δ)
 end

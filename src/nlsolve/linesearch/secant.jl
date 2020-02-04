@@ -1,7 +1,6 @@
 struct Secant{T, Line}
     factor::T
     shift::T
-    ls::Line
 end
 """
     Secant(;factor, shift)
@@ -18,10 +17,10 @@ References
 ---
 [1] Kelley, C. T. (2003). Solving nonlinear equations with Newton's method (Vol. 1). Siam.
 """
-Secant(; factor, shift, linesearch=Static()) = Secant(factor, shift, linesearch)
+Secant(; factor, shift) = Secant(factor, shift)
 
 
-function solve(prob::NLEProblem, x0, method=Secant(0.99, 1e-1), options=NLEOptions())
+function solve(prob::NEqProblem, x0, method=Secant(0.99, 1e-1), options=NEqOptions())
     if length(x0) > 1
         throw(ArgumentError("You cannot solve your problem with the Secant method, since it is a univariate method, and `length(x0)>1` where `x0` is the initial iterate."))
     end

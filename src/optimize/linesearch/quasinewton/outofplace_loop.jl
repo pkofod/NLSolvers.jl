@@ -1,36 +1,43 @@
 function minimize(obj::ObjWrapper, x0,
                    scheme::QuasiNewton,
-                   options=OptOptions())
+                   options=MinOptions())
 
     minimize(obj, (x0, nothing), (scheme, Backtracking()), options)
 end
 function minimize(obj::ObjWrapper, x0,
-                   approach::Tuple, options=OptOptions())
+                   approach::Tuple, options=MinOptions())
 
     minimize(obj, (x0, nothing), approach, options)
 end
 function minimize(obj::ObjWrapper, state0::Tuple,
                   scheme::QuasiNewton,
-                  options=OptOptions())
+                  options=MinOptions())
     minimize(obj, state0, (scheme, Backtracking()), options)
 end
 function minimize(obj::T1, state0::Tuple, approach::Tuple{<:Any, <:LineSearch},
-                  options::OptOptions=OptOptions(),
+                  options::MinOptions=MinOptions(),
                   linesearch::T2 = Backtracking()
                   ) where {T1<:ObjWrapper, T2}
 
+    #==============
+         Setup
+    ==============#
     x0, B0 = state0
     T = eltype(x0)
     x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(obj, approach, x0, copy(x0), B0)
-    # first iteration
-    x, z, fz, ∇fz, B, is_converged = iterate(x, fx, ∇fx, z, fz, ∇fz, B, approach, obj, options)
+    ∇f0 = norm(∇fz, Inf)
+
+    #========================
+         First iteration
+    ========================#
+    x, z, fz, ∇fz, B, is_converged = iterate(x, fx, ∇fx, z, fz, ∇fz, B, approach, obj, options, ∇f0)
 
     iter = 1
     while iter <= options.maxiter && !is_converged
         iter += 1
 
         # take a step and update approximation
-        x, z, fz, ∇fz, B, is_converged = iterate(x, fx, ∇fx, z, fz, ∇fz, B, approach, obj, options, false)
+        x, z, fz, ∇fz, B, is_converged = iterate(x, fx, ∇fx, z, fz, ∇fz, B, approach, obj, options, ∇f0, false)
         if norm(x.-z, Inf) ≤ T(1e-16)
             break
         end
@@ -39,7 +46,7 @@ function minimize(obj::T1, state0::Tuple, approach::Tuple{<:Any, <:LineSearch},
     return z, fz, ∇fz, iter
 end
 
-function iterate(x, fx::Tf, ∇fx, z, fz, ∇fz, B, approach, obj, options, is_first=nothing) where Tf
+function iterate(x, fx::Tf, ∇fx, z, fz, ∇fz, B, approach::Tuple{<:Any, <:LineSearch}, obj, options, ∇f0, is_first=nothing) where Tf
     # split up the approach into the hessian approximation scheme and line search
     scheme, linesearch = approach
     mstyle = OutOfPlace()
@@ -63,7 +70,7 @@ function iterate(x, fx::Tf, ∇fx, z, fz, ∇fz, B, approach, obj, options, is_f
     fz, ∇fz, B = update_obj(obj, d, s, ∇fx, z, ∇fz, B, scheme, is_first)
 
     # Check for gradient convergence
-    is_converged = converged(z, ∇fz, options.g_tol)
+    is_converged = converged(z, ∇fz, ∇f0, options)
 
     return x, z, fz, ∇fz, B, is_converged
 end

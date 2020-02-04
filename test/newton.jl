@@ -84,14 +84,14 @@ himmelblau_nonmut(∇²f, ∇f, x) = himmelblau!(∇²f, ∇f, x)
     @testset "newton static" begin
         sl = @SVector([0.0,0.0])
         state0 = (@SVector([2.0,2.0]), I+sl*sl')
-        res = minimize(inferredhimmelblau, state0, Newton(), OptOptions())
-        _alloc = @allocated minimize(inferredhimmelblau, state0, Newton(), OptOptions())
+        res = minimize(inferredhimmelblau, state0, Newton(), MinOptions())
+        _alloc = @allocated minimize(inferredhimmelblau, state0, Newton(), MinOptions())
         @test _alloc == 0
         @test norm(res[3], Inf) < 1e-8
-        _res = minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), OptOptions())
-        _alloc = @allocated minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), OptOptions())
+        _res = minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), MinOptions())
+        _alloc = @allocated minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), MinOptions())
         @test _alloc == 0
-        _alloc = @allocated minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), OptOptions())
+        _alloc = @allocated minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), MinOptions())
         @test _alloc == 0
         @test norm(res[3], Inf) < 1e-8
     end

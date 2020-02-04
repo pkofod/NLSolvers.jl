@@ -71,12 +71,12 @@ shortname(::Inverse) = "(inverse)"
 shortname(::Direct) = " (direct)"
 
 function printed_minimize(f∇f, x0, method)
-    res = minimize(f∇f, x0, method, OptOptions())
+    res = minimize(f∇f, x0, method, MinOptions())
     print("NN  $(shortname(method)) $(shortname(method.approx)): ")
     @printf("%2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 end
 function printed_minimize!(obj_inplace, x0, method)
-    res = minimize!(obj_inplace, x0, method, OptOptions())
+    res = minimize!(obj_inplace, x0, method, MinOptions())
     print("NN! $(shortname(method)) $(shortname(method.approx)): ")
     @printf("%2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 end
@@ -92,13 +92,13 @@ res = minimize(obj_static, x0s, GradientDescent(Direct()))
 @printf("NN  GD(S)  (direct): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 println()
 
-res = minimize(obj_inplace, x0, BFGS(Inverse()), OptOptions())
+res = minimize(obj_inplace, x0, BFGS(Inverse()), MinOptions())
 @test res[4] == 31
 @printf("NN  BFGS    (inverse): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
-res = minimize!(obj_inplace, copy(x0), (BFGS(Inverse()), Backtracking()), OptOptions())
+res = minimize!(obj_inplace, copy(x0), (BFGS(Inverse()), Backtracking()), MinOptions())
 @test res[4] == 31
 @printf("NN! BFGS    (inverse): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
-res = minimize!(obj_inplace, copy(x0), (BFGS(Inverse()), Backtracking(interp=FFQuadInterp())), OptOptions())
+res = minimize!(obj_inplace, copy(x0), (BFGS(Inverse()), Backtracking(interp=FFQuadInterp())), MinOptions())
 @test res[4] == 33
 @printf("NN! BFGS    (inverse, quad): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 res = minimize(obj_static, x0s, BFGS(Inverse()))
@@ -108,9 +108,9 @@ res = minimize(obj_static, x0s, (BFGS(Inverse()), Backtracking(interp=FFQuadInte
 @test res[4] == 33
 @printf("NN  BFGS(S) (inverse, quad): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 
-res = minimize(obj_inplace, x0, BFGS(Direct()), OptOptions())
+res = minimize(obj_inplace, x0, BFGS(Direct()), MinOptions())
 @printf("NN  BFGS    (direct): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
-res = minimize!(obj_inplace, copy(x0), BFGS(Direct()), OptOptions())
+res = minimize!(obj_inplace, copy(x0), BFGS(Direct()), MinOptions())
 @printf("NN! BFGS    (direct): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])
 res = minimize(obj_static, x0s, BFGS(Direct()))
 @printf("NN  BFGS(S) (direct): %2.2e  %2.2e  %d\n", norm(res[1]-xopt,Inf), norm(res[3], Inf), res[4])

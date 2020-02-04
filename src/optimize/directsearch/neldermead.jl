@@ -145,7 +145,7 @@ function minimize!(obj::ObjWrapper, x0, method::NelderMead, as::AbstractSimplexe
     simplex = ValuedSimplex(simplex_vector, simplex_value, order)
     res = minimize!(obj, simplex, method; itermax=itermax)
     x0 .= res.minimizer
-    return (minimizer=x0, minimum=res.minimum)
+    return res
 end
 
 function NMCaches(simplex)

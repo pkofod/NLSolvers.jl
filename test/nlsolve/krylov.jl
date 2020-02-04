@@ -2,6 +2,7 @@ using NLSolvers
 using LinearAlgebra
 using SparseDiffTools
 using SparseArrays
+using IterativeSolvers
 
 # Start with a stupid example
 n = 10
@@ -39,8 +40,14 @@ function F_powell!(Fx, x)
     Fx
 end
 
-krylov_problem = ResidualKrylovProblem(F_powell!; seed=rand(3))
-nlsolve!(krylov_problem, rand(3), ResidualKrylov(FixedForceTerm(0.4)))
+import NLSolvers: OnceDiffedJv
+function OnceDiffedJv(F; seed, autodiff=false)
+    JacOp = JacVec(F, seed; autodiff=false)
+    OnceDiffedJv(F, JacOp)
+end
+
+FJacOp = OnceDiffedJv(F_powell!; seed=rand(3))
+nlsolve!(FJacOp, rand(3), ResidualKrylov(FixedForceTerm(0.4), 1e-3, 300))
 
 function f_2by2!(F, x)
     F[1] = (x[1]+3)*(x[2]^3-7)+18
@@ -57,7 +64,8 @@ function g_2by2!(J, x)
     J
 end
 
-nlsolve!(f_2by2!, rand(2), Krylov(FixedForceTerm(0.4)))
+FJacOp2 = OnceDiffedJv(f_2by2!; seed=rand(2))
+nlsolve!(FJacOp2, rand(2), ResidualKrylov(FixedForceTerm(0.4), 1e-3, 300))
 
 
 

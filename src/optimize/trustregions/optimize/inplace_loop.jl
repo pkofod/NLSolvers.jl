@@ -1,21 +1,23 @@
 
-function tr_minimize!(objective, state0::Tuple, approach::Tuple{<:QuasiNewton, <:TRSPSolver}, options::OptOptions)
+function tr_minimize!(objective, state0::Tuple, approach::Tuple{<:QuasiNewton, <:TRSPSolver}, options::MinOptions)
     x0, B0 = state0
     T = eltype(x0)
     Δmin = sqrt(eps(T))
 
     x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(objective, approach, x0, copy(x0), B0)
+    ∇f0 = norm(∇fz, Inf)
+
     p = copy(x)
 
     Δk = T(20.0)
 
-    x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, accept, is_converged = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δk, approach, objective, options)
+    x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, accept, is_converged = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δk, approach, objective, options, ∇f0)
 
     iter = 1
     while iter <= options.maxiter && !is_converged
         iter += 1
-        x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, accept, is_converged = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, approach, objective, options)
-        if Δkp1 ≤ Δmin || norm(∇fx, Inf) ≤ options.g_tol
+        x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, accept, is_converged = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, approach, objective, options, ∇f0)
+        if Δkp1 ≤ Δmin || norm(∇fx, Inf) ≤ options.g_abstol
             break
         end
     end
@@ -23,15 +25,14 @@ function tr_minimize!(objective, state0::Tuple, approach::Tuple{<:QuasiNewton, <
 end
 
 
-function iterate!(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach, objective, options; scale=false)
+function iterate!(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach, objective, options, ∇f0; scale=false)
     T = eltype(x)
     scheme, subproblemsolver = approach
 
     fx = fz
     copyto!(x, z)
     copyto!(∇fx, ∇fz)
-
-    spr = subproblemsolver(∇fx, Bx, Δk, p, scheme; abstol=1e-10, maxiter=50)
+    spr = subproblemsolver(∇fx, Bx, Δk, p, scheme; abstol=1e-10)
     Δm = -spr.mz
     # Grab the model value, m. If m is zero, the solution, z, does not improve
     # the model value over x. If the model is not converged, but the optimal
@@ -65,7 +66,7 @@ function iterate!(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach, objective, o
         ∇fz .= ∇fx
     end
 
-    is_converged = converged(z, ∇fz, options.g_tol)
+    is_converged = converged(z, ∇fz, ∇f0, options)
 
     return x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, reject_step, is_converged
 end

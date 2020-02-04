@@ -43,7 +43,7 @@ backtracking line search.
 """
 function _safe_α(α_cand, α_curr, decrease=0.1, ratio=0.5)
   α_cand < decrease*α_curr && return decrease*α_curr
-  α_cand > ratio*α_curr && return ratio*α_curr
+  α_cand > ratio*α_curr    && return ratio*α_curr
   
   α_cand # if the candidate is in the interval, just return it
 end
@@ -51,7 +51,31 @@ end
 """
   Backtracking(;)
 
-???
+Constructs an object to control the Backtracking line search algorithm. The
+algorithm tries out an initial point and then it iteratively tries to find
+a good enough step length as measured by the improvement compared to a first
+order Taylor approximation around a step length of zero.
+
+The Backtracking constructor takes the following keyword arguments
+ - ratio: the ratio between the current trial step length and the next
+ - decrease: a parameter that controls when descent is sufficient
+ - maxiter: maximum number of times to search for a better step length
+ - interp: which type of interpolation to use, if any
+ - steprange: the allowed range for steps lengths to be in given as a tuple
+ - verbose: the verbosity level
+
+`ratio` controls how much time to spend looking for a large step size. It
+is very common to chose 1/2, but others can be chosen. It's 
+
+When chosing parameters, it's important to note that it must be true that
+  0 < decrease < ratio
+
+`maxiter` defaults to 26. With no interpolation and with a ratio of 1/2, this
+means that we quit when the step size reaches sqrt(eps(Float64)). Provide another
+value as appropriate.
+
+
+
 """
 struct Backtracking{T1, T2, T3, TR} <: LineSearch
     ratio::T1
@@ -64,10 +88,12 @@ end
 Backtracking(; ratio=0.5, decrease=1e-4, maxiter=50,
 	           steprange=(0.0, Inf), interp=FixedInterp(),
 	           verbose=false) =
- Backtracking(ratio, decrease, maxiter, steprange, interp, verbose)
+ Backtracking(ratio, decrease, maxiter, interp, steprange, verbose)
 
 struct FixedInterp <: BacktrackingInterp end
 struct FFQuadInterp <: BacktrackingInterp end
+struct FFFQuadInterp <: BacktrackingInterp end
+
 
 """
   interpolate(itp::BacktrackingInterp, ...)
@@ -82,13 +108,22 @@ function interpolate(itp::FixedInterp, φ, φ0, dφ0, α, f_α, ratio)
 	β, α, φ_α
 end
 
-
-## Polynomial line search
+# There are many ways to come up with the next step length trial value.
+# If we want to interpolate, then we generally need to have some combination
+# of values and derivatives of the function we're building an approximation
+# for. In the non-linear equations case, a line search algorithm implies that
+# some sort of mert function is used. When the squared two norm is used we
+# can calculate a cubic interpolation using the "two point" method, and we
+# have the two values and the derivative that we need from 
+#
 # f(α) = ||F(xₙ+αdₙ)||²₂
 # f(0) = ||F(xₙ)||²₂
 # f'(0) = 2*(F'(xₙ)'dₙ)'F(xₙ) = 2*F(xₙ)'*(F'(xₙ)*dₙ) < 0
-# if f'(0) >= 0, then dₙ  is not a descent direction
-# for the merit function. This can happen for broyden
+#
+# if f'(0) >= 0, then dₙ  is not a descent direction for the merit function.
+# This can happen for broyden. Notice, that when calculating dₙ using an
+# inexact Newton's method, F'(xₙ)*dₙ can be obtained from the final residual.
+# In either case, this is stored in φ.dφ0 as should be handled using the LineObjective.
 
 # two-point parabolic
 # at α = 0 we know f and f' from F and J as written above
@@ -154,12 +189,3 @@ function find_steplength(ls::Backtracking, φ::T, λ) where T
     end
     return α, f_α, ls_success
 end
-
-# The
-struct ThreePointQuadratic{T1, T2} <: LineSearch
-    ratio::T1
-	decrease::T1
-	maxiter::T2
-	verbose::Bool
-end
-ThreePointQuadratic(; ratio=0.5, decrease=1e-4, maxiter=50, verbose=false) = ThreePointQuadratic(ratio, decrease, maxiter, verbose)

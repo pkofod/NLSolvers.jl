@@ -14,9 +14,11 @@ The package NLSolversAD.jl adds automatic conversion of problems to match algori
 that require higher order derivates than provided by the user. It also adds AD
 constructors for a target number of derivatives.
 """
-struct NEqProblem{R<:ObjWrapper, Opt<:NEqOptions}
+struct NEqProblem{R<:ObjWrapper}
   residuals::R
-  options::Opt
+end
+function value(nleq::NEqProblem, x)
+    nleq.F(x)
 end
 
 """
@@ -27,9 +29,13 @@ equations. Current options are:
 
   - `maxiter` [= 10000]: number of major iterations where appropriate
 """
-struct NEqOptions{Tmi}
- maxiter::Tmi
+struct NEqOptions{T, Tmi}
+  f_abstol::T
+  f_reltol::T
+  maxiter::Tmi
 end
+NLEOptions(; f_abstol=1e-8, f_reltol=1e-8, maxiter=10^4) = NLEOptions(f_abstol, f_reltol, maxiter)
+
 """
 KrylovNEqProblem(res)
 KrylovNEqProblem(res, opt)
@@ -46,10 +52,8 @@ about options using `?NEqOptions`.
 The package NLSolversAD.jl adds constructors for methods that provide residual
 function evaluation and Jacobians only (for example `NonDiffed`, `OnceDiffed`, ...).
 """
-struct KrylovNEqProblem{R<:OnceDiffedJv, Opt<:KrylovNEqOptions, C<:KrylovNEqCache}
+struct KrylovNEqProblem{R<:OnceDiffedJv}
   krylovres::R
-  opt::Opt
-  cache::C
 end
 
 """
@@ -63,3 +67,4 @@ equations. Current options are:
 struct KrylovNEqOptions{Tmi}
  maxiter::Tmi
 end
+

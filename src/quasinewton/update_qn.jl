@@ -51,7 +51,7 @@ function update_obj(objective, d, s, ∇fx, z, ∇fz, B, scheme, scale=nothing)
     # Update B
     if scale == nothing
         if isa(scheme.approx, Direct)
-            Badj = dot(y, d)/dot(y, B* y)*B
+            Badj = dot(y, d)/dot(y, B* y)*B # this is different than above?
         else
             Badj = dot(y, B* y)/dot(y, d)*B
         end
