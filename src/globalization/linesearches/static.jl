@@ -1,4 +1,4 @@
-struct Static{T}
+struct Static{T} <: LineSearcher
   α::T
 end
 

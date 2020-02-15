@@ -16,7 +16,7 @@ Rwquires:
   - ϕ is C1
 ===============================================================================#
 
-struct MoreThuente{T1, T2} <: LineSearch
+struct MoreThuente{T1, T2} <: LineSearcher
     ratio::T1
 	c::T1
 	maxiter::T2

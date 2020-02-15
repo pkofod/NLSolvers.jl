@@ -40,64 +40,29 @@
     fg_static = OnceDiffed(fletcher_powell_fg_static; infer=true)
 
     state0 = (@SVector[-0.5, 0.0, 0.0], I+sv3*sv3')
-    @allocated minimize(fg_static, state0, BFGS(Inverse()), MinOptions())
-    _alloc = @allocated minimize(fg_static, state0, BFGS(Inverse()), MinOptions())
-    @test _alloc == 0
-    @allocated minimize(fg_static, state0, BFGS(Inverse()))
-    _alloc = @allocated minimize(fg_static, state0, BFGS(Inverse()))
-    @test _alloc == 0
-    @allocated minimize(fg_static, state0, BFGS(Inverse()))
-    _alloc = @allocated minimize(fg_static, state0, BFGS(Inverse()))
+
+    @allocated minimize(fg_static, state0, LineSearch(BFGS(Inverse()), Backtracking()), MinOptions())
+    _alloc = @allocated minimize(fg_static, state0, LineSearch(BFGS(Inverse()), Backtracking()), MinOptions())
     @test _alloc == 0
 
-    minimize(fg_static, state0, BFGS(Direct()), MinOptions())
-    _alloc = @allocated minimize(fg_static, state0, BFGS(Direct()), MinOptions())
-    @test _alloc == 0
-    minimize(fg_static, state0, BFGS(Direct()))
-    _alloc = @allocated minimize(fg_static, state0, BFGS(Direct()))
-    @test _alloc == 0
-    minimize(fg_static, state0, BFGS(Direct()))
-    _alloc = @allocated minimize(fg_static, state0, BFGS(Direct()))
+    minimize(fg_static, state0, LineSearch(BFGS(Direct()), Backtracking()), MinOptions())
+    _alloc = @allocated minimize(fg_static, state0, LineSearch(BFGS(Direct()), Backtracking()), MinOptions())
     @test _alloc == 0
 
-    minimize(fg_static, state0, DFP(Inverse()), MinOptions())
-    _alloc = @allocated minimize(fg_static, state0, DFP(Inverse()), MinOptions())
-    @test _alloc == 0
-    minimize(fg_static, state0, DFP(Inverse()))
-    _alloc = @allocated minimize(fg_static, state0, DFP(Inverse()))
-    @test _alloc == 0
-    minimize(fg_static, state0, DFP(Inverse()))
-    _alloc = @allocated minimize(fg_static, state0, DFP(Inverse()))
+    minimize(fg_static, state0, LineSearch(DFP(Inverse()), Backtracking()), MinOptions())
+    _alloc = @allocated minimize(fg_static, state0, LineSearch(DFP(Inverse()), Backtracking()), MinOptions())
     @test _alloc == 0
 
-    minimize(fg_static, state0, DFP(Direct()), MinOptions())
-    _alloc = @allocated minimize(fg_static, state0, DFP(Direct()), MinOptions())
-    @test _alloc == 0
-    minimize(fg_static, state0, DFP(Direct()))
-    _alloc = @allocated minimize(fg_static, state0, DFP(Direct()))
-    @test _alloc == 0
-    minimize(fg_static, state0, DFP(Direct()))
-    _alloc = @allocated minimize(fg_static, state0, DFP(Direct()))
+    minimize(fg_static, state0, LineSearch(DFP(Direct()), Backtracking()), MinOptions())
+    _alloc = @allocated minimize(fg_static, state0, LineSearch(DFP(Direct()), Backtracking()), MinOptions())
     @test _alloc == 0
 
-    minimize(fg_static, state0, SR1(Inverse()), MinOptions())
-    _alloc = @allocated minimize(fg_static, state0, SR1(Inverse()), MinOptions())
-    @test _alloc == 0
-    minimize(fg_static, state0, SR1(Inverse()))
-    _alloc = @allocated minimize(fg_static, state0, SR1(Inverse()))
-    @test _alloc == 0
-    minimize(fg_static, state0, SR1(Inverse()))
-    _alloc = @allocated minimize(fg_static, state0, SR1(Inverse()))
+    minimize(fg_static, state0, LineSearch(SR1(Inverse()), Backtracking()), MinOptions())
+    _alloc = @allocated minimize(fg_static, state0, LineSearch(SR1(Inverse()), Backtracking()), MinOptions())
     @test _alloc == 0
 
-    minimize(fg_static, state0, SR1(Direct()), MinOptions())
-    _alloc = @allocated minimize(fg_static, state0, SR1(Direct()), MinOptions())
-    @test _alloc == 0
-    minimize(fg_static, state0, SR1(Direct()))
-    _alloc = @allocated minimize(fg_static, state0, SR1(Direct()))
-    @test _alloc == 0
-    minimize(fg_static, state0, SR1(Direct()))
-    _alloc = @allocated minimize(fg_static, state0, SR1(Direct()))
+    minimize(fg_static, state0, LineSearch(SR1(Direct()), Backtracking()), MinOptions())
+    _alloc = @allocated minimize(fg_static, state0, LineSearch(SR1(Direct()), Backtracking()), MinOptions())
     @test _alloc == 0
 
 end

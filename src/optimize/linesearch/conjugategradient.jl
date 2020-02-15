@@ -1,21 +1,25 @@
 # Might consider Daniel 1967 that uses second order
 # Make them inputs to a CG type
 abstract type CGUpdate end
-struct ConjugateGradient{Tu}
+struct ConjugateGradient{Tu, TP}
   update::Tu
+  P::TP
 end
-ConjugateGradient(;update=HZ()) = ConjugateGradient(update)
+ConjugateGradient(;update=HZ()) = ConjugateGradient(update, nothing)
+hasprecon(::ConjugateGradient{<:Any, <:Nothing}) = NoPrecon()
+hasprecon(::ConjugateGradient{<:Any, <:Any}) = HasPrecon()
 
+summary(::ConjugateGradient) = "Conjugate Gradient Descent"
 #### Conjugate Descent [Fletcher] (CD)
 struct CD <: CGUpdate end
-_β(::CD, d, ∇fz, ∇fx, y) = -norm(∇fz)^2/dot(d, ∇fx)
+_β(::CD, d, ∇fz, ∇fx, y, P) = -norm(∇fz)^2/dot(d, ∇fx)
 
 #### Hager-Zhang (HZ)
 struct HZ{Tη} <: CGUpdate
 	η::Tη # a "forcing term"
 end
 HZ() = HZ(1/100)
-function _β(cg::HZ, d, ∇fz, ∇fx, y)
+function _β(cg::HZ, d, ∇fz, ∇fx, y, P)
 	T = eltype(∇fz)
 
 	ddy = dot(d, y)
@@ -28,91 +32,101 @@ end
 
 #### Hestenes-Stiefel (HS)
 struct HS <: CGUpdate end
-_β(::HS, d, ∇fz, ∇fx, y) = dot(∇fz, y)/dot(d, y)
+_β(::HS, d, ∇fz, ∇fx, y, P) = dot(∇fz, y)/dot(d, y)
 
 #### Fletcher-Reeves (FR)
 struct FR <: CGUpdate end
-_β(::FR, d, ∇fz, ∇fx, y) = norm(∇fz)^2/norm(∇fx)^2
+_β(::FR, d, ∇fz, ∇fx, y, P) = norm(∇fz)^2/norm(∇fx)^2
 
 #### Polak-Ribiére-Polyak (PRP)
 struct PRP{Plus} end
 PRP(;plus=true) = PRP{plus}()
-_β(::PRP, d, ∇fz, ∇fx, y) = dot(∇fz, y)/norm(∇fx)^2
-function _β(::PRP{true}, d, ∇fz, ∇fx, y)
+_β(::PRP, d, ∇fz, ∇fx, y, P) = dot(∇fz, y)/norm(∇fx)^2
+function _β(::PRP{true}, d, ∇fz, ∇fx, y, P)
   β = dot(∇fz, y)/norm(∇fx)^2
   max(typeof(β)(0), β)
 end
 
 #### Liu-Storey (LS)
 struct LS <: CGUpdate end
-_β(::LS, d, ∇fz, ∇fx, y) = dot(∇fz, y)/dot(d, ∇fx)
+_β(::LS, d, ∇fz, ∇fx, y, P) = dot(∇fz, y)/dot(d, ∇fx)
 
 #### Dai-Yuan (DY)
 struct DY <: CGUpdate end
-_β(::DY, d, ∇fz, ∇fx, y) = norm(∇fz)^2/dot(d, y)
+_β(::DY, d, ∇fz, ∇fx, y, P) = norm(∇fz)^2/dot(d, y)
 
 #### Wei-Yao-Liu (VPRP)
 struct VPRP <: CGUpdate end
-_β(::VPRP, d, ∇fz, ∇fx, y) = (norm(∇fz)^2-norm(∇fz)/norm(∇fx)*dot(∇fz, ∇fx))/dot(d, y)
+_β(::VPRP, d, ∇fz, ∇fx, y, P) = (norm(∇fz)^2-norm(∇fz)/norm(∇fx)*dot(∇fz, ∇fx))/dot(d, y)
 
 
-# using an "intial vectors" function we can initialize s if necessary or nothing if not to save on vectors
-minimize!(obj::ObjWrapper, x0, cg::ConjugateGradient; maxiter=100) =
-  _minimize(obj, x0, (cg, HZAW()), InPlace(); maxiter=maxiter)
-minimize!(obj::ObjWrapper, x0, approach::Tuple{<:ConjugateGradient, <:LineSearch}; maxiter=100) =
-  _minimize(obj, x0, approach, InPlace(); maxiter=maxiter)
-minimize(obj::ObjWrapper, x0, cg::ConjugateGradient; maxiter=100) =
-  _minimize(obj, x0, (cg, HZAW()), OutOfPlace(); maxiter=maxiter)
-minimize(obj::ObjWrapper, x0, approach::Tuple{<:ConjugateGradient, <:LineSearch}; maxiter=100) =
-  _minimize(obj, x0, approach, OutOfPlace(); maxiter=maxiter)
+# using an "initial vectors" function we can initialize s if necessary or nothing if not to save on vectors
+minimize!(obj::ObjWrapper, x0, cg::ConjugateGradient, options::MinOptions) =
+  _minimize(obj, x0, LineSearch(cg, HZAW()), options, InPlace())
+minimize!(obj::ObjWrapper, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) =
+  _minimize(obj, x0, approach, options, InPlace())
+minimize(obj::ObjWrapper, x0, cg::ConjugateGradient, options::MinOptions) =
+  _minimize(obj, x0, LineSearch(cg, HZAW()), options, OutOfPlace())
+minimize(obj::ObjWrapper, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) =
+  _minimize(obj, x0, approach, options, OutOfPlace())
 
-function _minimize(obj::ObjWrapper, x0, approach::Tuple{<:ConjugateGradient, <:LineSearch}, mstyle::MutateStyle; maxiter=100)
-
+function _minimize(obj::ObjWrapper, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions, mstyle::MutateStyle)
+	t0 = time()
 	Tx=eltype(x0)
-	cg, linesearch = approach
+    cg, linesearch = modelscheme(approach), algorithm(approach)
 
     fx, ∇fx = obj(x0, copy(x0))
-
+    ∇f0 = norm(∇fx)
+    f0 = fx
     fz = fx
 	α = Tx(0)
+
+    P = initial_preconditioner(approach, x0)
 
 	d, ∇fz = -copy(∇fx), copy(∇fx)
     x, y = copy(x0), copy(∇fz)
 	z = copy(x)
 	k = 0
-    while norm(∇fx, Inf) ≥ 1e-8 && k ≤ maxiter
+	βkp1 = Tx(0)
+    is_converged = (false,false,false)
+    while k ≤ options.maxiter && !any(is_converged)
 		# Set up line search
         α_0 = initial(cg.update, a-> obj(x.+a.*d), α, k, x, fx, dot(d, ∇fx), ∇fx)
 		φ = _lineobjective(mstyle, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
 
+    	k += 1
 		# Perform line search
 		α, f_α, ls_success = find_steplength(linesearch, φ, Tx(1.0))
+		!ls_success && break
 		# move in direction
 		if mstyle isa InPlace
+            move(z, x, α, d, mstyle)
 			@. z = x + α*d
         	fz, ∇fz = obj(z, ∇fz)
         	@. y = ∇fz - ∇fx
-			βkp1 = _β(cg.update, d, ∇fz, ∇fx, y)
+			βkp1 = _β(cg.update, d, ∇fz, ∇fx, y, P)
+            is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)	
+            any(is_converged) && break
 			fx = fz
 			x .= z
 			∇fx .= ∇fz
 
 			@. d = -∇fx + βkp1*d
-			k = k+1
 		elseif mstyle isa OutOfPlace
 			z = @. x + α*d
 			fz, ∇fz = obj(z, ∇fz)
 			y = @. ∇fz - ∇fx
-			βkp1 = _β(cg.update, d, ∇fz, ∇fx, y)
+			βkp1 = _β(cg.update, d, ∇fz, ∇fx, y, P)
+            is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)	
+            any(is_converged) && break # only here until the first iteration is properly taken outside
 			fx = fz
 			x = copy(z)
 			∇fx = copy(∇fz)
 
 			d = @. -∇fx + βkp1*d
-			k = k+1
 		end
     end
-    x, fx, ∇fx, k
+    return ConvergenceInfo(approach, (beta=βkp1, Δx=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=k, time=time()-t0), options)
 end
 
 function initial(cg, φ, α, k, x, φ₀, dφ₀, ∇fx)

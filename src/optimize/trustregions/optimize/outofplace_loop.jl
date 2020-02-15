@@ -1,27 +1,36 @@
-function tr_minimize(objective, x0, approach, B0, options)
+function minimize(objective::ObjWrapper, s0, approach::TrustRegion, options::MinOptions)
+    t0 = time()
     T = eltype(x0)
-
+    x0, B0 = s0
     x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(objective, approach, x0, copy(x0), B0)
-    ∇f0 = norm(∇fz, Inf)
-
     p = copy(x)
+
+    ∇f0 = norm(∇fz, Inf)
+    f0 = copy(fz)
+
 
     Δk = T(10.0)
 
-    x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept, is_converged = iterate(p, x, fx, ∇fx, z, fz, ∇fz, B, Δk, approach, objective, options, ∇f0)
+    x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept = iterate(p, x, fx, ∇fx, z, fz, ∇fz, B, Δk, approach, objective, options, ∇f0)
+
+    # Check for gradient convergence
+    is_converged = converged(z, ∇fz, ∇f0, options)
     iter = 1
     while iter <= options.maxiter && !is_converged
         iter += 1
-        x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept, is_converged = iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, approach, objective, options, ∇f0)
+        x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept, is_converged = iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, approach, objective, options)
+
+        # Check for gradient convergence
+        is_converged = converged(z, ∇fz, ∇f0, options)
     end
-    return z, fz, ∇fz, iter
+    return ConvergenceInfo(approach, (z, fz, ∇fz, f0, ∇f0, iter))
 end
 
 
-function iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach, objective, options, ∇f0; scale=false)
+function iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach::TrustRegion, objective, options; scale=false)
     T = eltype(x)
 
-    scheme, subproblemsolver = approach
+    scheme, subproblemsolver = modelscheme(approach), algorithm(approach)
 
     fx = fz
     copyto!(x, z)
@@ -56,7 +65,7 @@ function iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach, objective, op
 
     # Update before acceptance, to keep adding information about the hessian
     # even when the step is not "good" enough.
-    fz, ∇fz, Bz = update_obj(objective, spr.p, spr.p, ∇fx, z, ∇fz, Bx, scheme, scale)
+    fz, ∇fz, Bz = update_obj(objective, spr.p, ∇fx, z, ∇fz, Bx, scheme, scale)
 
     # Δf is often called ared or Ared for actual reduction. I prefer "change in"
     # f, or Delta f.
@@ -96,7 +105,6 @@ function iterate(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach, objective, op
         end
         accept = true
     end
-    is_converged = converged(z, ∇fz, ∇f0, options)
 
-    return x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept, is_converged
+    return x, fx, ∇fx, z, fz, ∇fz, Bz, Δkp1, accept
 end

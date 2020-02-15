@@ -35,42 +35,55 @@ function default_neighbor(x_best)
   return x_best .+ T.(RandomNumbers.randn(n))
 end
 
-function minimize(objective, x0, method::SimulatedAnnealing; maxiter=1000)
-    T = eltype(x0)
+function minimize(objective::ObjWrapper, x0, method::SimulatedAnnealing, options::MinOptions)
+  T = eltype(x0)
+  t0 = time()
 
+  x_best = copy(x0)
+  f_best = objective(x_best)
+  x_now = copy(x0)
+  f_now = f_best
+  f0 = f_now
+  temperature = f_best
+  iter = 0
+  is_converged = converged(method, f_now, options)
+  while iter ≤ options.maxiter && !(is_converged)
+    iter += 1
+    # Determine the temperature for current iteration
+    t = method.temperature(iter)
 
-    x_best = copy(x0)
-    f_best = objective(nothing, x_best)
-    x_now = copy(x0)
-    f_now = f_best
-    for iter = 1:maxiter
-        # Determine the temperature for current iteration
-        t = method.temperature(iter)
+    # Randomly generate a neighbor of our current state
+    x_candidate = method.neighbor(x_best)
 
-        # Randomly generate a neighbor of our current state
-        x_candidate = method.neighbor(x_best)
+    # Evaluate the cost function at the proposed state
+    f_candidate = objective(x_candidate)
 
-        # Evaluate the cost function at the proposed state
-        f_candidate = objective(nothing, x_candidate)
+    if f_candidate <= f_now # this handles non-finite values as well
+      # If proposal is superior, we always move to it
+      x_now = copy(x_candidate)
+      f_now = f_candidate
 
-        if f_candidate <= f_now
-            # If proposal is superior, we always move to it
-            x_now = copy(x_candidate)
-            f_now = f_candidate
-
-            # If the new state is the best state yet, keep a record of it
-            if f_candidate < f_best
-                x_best = copy(x_now)
-                f_best = f_now
-            end
-        else
-            # If proposal is inferior, we move to it with probability p
-            p = exp(-(f_candidate - f_now) / t)
-            if T(RandomNumbers.rand()) <= p
-                x_now = copy(x_candidate)
-                f_now = f_candidate
-            end
-        end
+      # If the new state is the best state yet, keep a record of it
+      if f_candidate < f_best
+        x_best = copy(x_now)
+        f_best = f_now
+       end
+    else
+      # If proposal is inferior, we move to it with probability p
+      p = exp(-(f_candidate - f_now) / t)
+      if T(RandomNumbers.rand()) <= p
+        x_now = copy(x_candidate)
+        f_now = f_candidate
+      end
     end
-    (f_best=f_best, x_best=x_best, f_now=f_now, x_now=x_now, temperature=method.temperature(maxiter))
+    is_converged = converged(method, f_now, options)
+  end
+
+  # (f_best=f_best, x_best=x_best, f_now=f_now, x_now=x_now, temperature=temperature)
+  ConvergenceInfo(method, (minimizer=x_best, minimum=f_best, f_now=f_now, x_now=x_now,temperature=temperature, f0=f0, iter=iter, time=time()-t0), options)
+end
+function converged(method::SimulatedAnnealing, fz, options)
+  f_converged = false
+  f_converged = f_converged || fz ≤ options.f_limit
+  f_converged = f_converged || isnan(fz)
 end

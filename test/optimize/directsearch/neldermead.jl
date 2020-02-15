@@ -34,7 +34,7 @@ nm_prob! = MinProblem(obj=obj!)
 solve!(nm_prob!, rand(3), NelderMead())
 
 
-minimize!(obj!, -rand(3)*9 .- 3, NLSolvers.NelderMead())
+minimize!(obj!, -rand(3)*9 .- 3, NLSolvers.NelderMead(), MinOptions())
 V = [[1.0,1.0,1.0], [0.0,1.0,1.0],[0.40,0.0,0.0],[-1.0,2.0,.03]]
 F = f∇f!.(nothing, V)
 

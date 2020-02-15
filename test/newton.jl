@@ -76,24 +76,24 @@ himmelblau_nonmut(∇²f, ∇f, x) = himmelblau!(∇²f, ∇f, x)
     end
     inferredhimmelblau = TwiceDiffed(himmelblau_twicediff; infer=true)
 
-    res = minimize!(TwiceDiffed(himmelblau!), copy([2.0,2.0]), Newton())
-    @test norm(res[3], Inf) < 1e-8
-    res = minimize(TwiceDiffed(himmelblau_nonmut), copy([2.0,2.0]), Newton())
-    @test norm(res[3], Inf) < 1e-8
+    res = minimize!(TwiceDiffed(himmelblau!), (copy([2.0,2.0]), [0.0 0.0;0.0 0.0]), LineSearch(Newton()), MinOptions())
+    @test norm(res.info.∇fz, Inf) < 1e-8
+    res = minimize(TwiceDiffed(himmelblau_nonmut), (copy([2.0,2.0]), [0.0 0.0;0.0 0.0]), LineSearch(Newton()), MinOptions())
+    @test norm(res.info.∇fz, Inf) < 1e-8
 
     @testset "newton static" begin
         sl = @SVector([0.0,0.0])
         state0 = (@SVector([2.0,2.0]), I+sl*sl')
-        res = minimize(inferredhimmelblau, state0, Newton(), MinOptions())
-        _alloc = @allocated minimize(inferredhimmelblau, state0, Newton(), MinOptions())
+        res = minimize(inferredhimmelblau, state0, LineSearch(Newton()), MinOptions())
+        _alloc = @allocated minimize(inferredhimmelblau, state0, LineSearch(Newton()), MinOptions())
         @test _alloc == 0
-        @test norm(res[3], Inf) < 1e-8
-        _res = minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), MinOptions())
-        _alloc = @allocated minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), MinOptions())
+        @test norm(res.info.∇fz, Inf) < 1e-8
+        _res = minimize(inferredhimmelblau, state0, LineSearch(Newton(), Backtracking()), MinOptions())
+        _alloc = @allocated minimize(inferredhimmelblau, state0, LineSearch(Newton(), Backtracking()), MinOptions())
         @test _alloc == 0
-        _alloc = @allocated minimize(inferredhimmelblau, state0, (Newton(), Backtracking()), MinOptions())
+        _alloc = @allocated minimize(inferredhimmelblau, state0, LineSearch(Newton(), Backtracking()), MinOptions())
         @test _alloc == 0
-        @test norm(res[3], Inf) < 1e-8
+        @test norm(res.info.∇fz, Inf) < 1e-8
     end
 
 end

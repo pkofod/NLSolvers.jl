@@ -28,31 +28,81 @@ solve!(prob::MinProblem{<:Any, <:Nothing, <:Nothing, <:Nothing}, x0, solver=BFGS
 solve!(prob::MinProblem{<:Any, <:Nothing, <:Nothing, <:Nothing}, s0::Tuple) =
   minimize!(prob.objective, s0, BFGS(), MinOptions())
 
-struct ConvergenceInfo{Ts, T}
+struct ConvergenceInfo{Ts, T, O}
   solver::Ts
   info::T
+  options::O
 end
-function Base.show(io::IO, ::ConvergenceInfo)
-  if isa(mr.method, NelderMead)
-      println(io, "    √(Σ(yᵢ-ȳ)²)/n $(nm_converged(r) ? "≤" : "≰") $(nm_tol(r))")
-  else
-      println(io, "    |x - x'|               = $(x_abschange(r)) $(x_abschange(r)<=x_abstol(r) ? "≤" : "≰") $(x_abstol(r))")
-      println(io, "    |x - x'|/|x'|          = $(x_relchange(r)) $(x_relchange(r)<=x_reltol(r) ? "≤" : "≰") $(x_reltol(r))")
-      println(io, "    |f(x) - f(x')|         = $(f_abschange(r)) $(f_abschange(r)<=f_abstol(r) ? "≤" : "≰") $(f_abstol(r))")
-      println(io, "    |f(x) - f(x')|/|f(x')| = $(f_relchange(r)) $(f_relchange(r)<=f_reltol(r) ? "≤" : "≰") $(f_reltol(r))")
-      println(io, "    |g(x)|                 = $(g_residual(r)) $(g_residual(r)<=g_tol(r) ?  "≤" : "≰") $(g_tol(r))")
+function Base.show(io::IO, ci::ConvergenceInfo)
+  opt = ci.options
+  info = ci.info
+
+  println(io, "Results of minimization\n")
+  println(io, "* Algorithm:")
+  println(io, "  $(summary(ci.solver))")
+  println(io)
+  println(io, "* Candidate solution:")
+  println(io, "  Final objective value:    $(@sprintf("%.2e", ci.info.minimum))")
+  if haskey(info, :∇fz)
+    println(io, "  Final gradient norm:      $(@sprintf("%.2e", opt.g_norm(info.∇fz)))")
   end
+  println(io)
+  println(io, "  Initial objective value:  $(@sprintf("%.2e", ci.info.f0))")
+  if haskey(info, :∇f0)
+    println(io, "  Initial gradient norm:    $(@sprintf("%.2e", info.∇f0))")
+  end
+  println(io)
+  println(io, "* Convergence measures")
+  if isa(ci.solver, NelderMead)
+      nm_converged(r) = 0.0
+      println(io, "  √(Σ(yᵢ-ȳ)²)/n         = $(@sprintf("%.2e", info.nm_obj)) <= $(@sprintf("%.2e", opt.nm_tol)) ($(info.nm_obj<=opt.nm_tol))")
+  else
+      println(io, "  |x - x'|              = $(@sprintf("%.2e", info.Δx)) <= $(@sprintf("%.2e", opt.x_abstol)) ($(info.Δx<=opt.x_abstol))")
+      println(io, "  |x - x'|/|x|          = $(@sprintf("%.2e", info.Δx/info[2])) <= $(@sprintf("%.2e", opt.x_reltol)) ($(info.Δx/info[2] <= opt.x_reltol))")
+      if isfinite(opt.f_limit)
+        println(io, "  |f(x')|               = $(@sprintf("%.2e", info.fz)) <= $(@sprintf("%.2e", opt.f_limit)) ($(info.fz<=opt.f_limit))")
+      end
+      if haskey(info, :fx)
+        Δf = abs(info.fx-info.fz)
+        println(io, "  |f(x) - f(x')|        = $(@sprintf("%.2e", Δf)) <= $(@sprintf("%.2e", opt.f_abstol)) ($(Δf<=opt.f_abstol))")
+        println(io, "  |f(x) - f(x')|/|f(x)| = $(@sprintf("%.2e", Δf/info.fx)) <= $(@sprintf("%.2e", opt.f_reltol)) ($(Δf/info.fx<=opt.f_reltol))")
+      end
+      if haskey(info, :∇fx) && haskey(info, :∇fz)
+        ρ∇f = opt.g_norm(info.∇fz)
+        println(io, "  |g(x)|                = $(@sprintf("%.2e", ρ∇f)) <= $(@sprintf("%.2e", opt.g_abstol)) ($(ρ∇f<=opt.g_abstol))")
+        println(io, "  |g(x)|/|g(x₀)|        = $(@sprintf("%.2e", ρ∇f/info.∇f0)) <= $(@sprintf("%.2e", opt.g_reltol)) ($(ρ∇f/info.∇f0<=opt.g_reltol))")
+      end
+  end
+  println(io)
+  println(io, "* Work counters")
+  println(io, "  Seconds run:   $(@sprintf("%.2e", info.time))")
+  println(io, "  Iterations:    $(info.iter)")
 end
 
-struct MinOptions{T1, T2}
-    g_abstol::T1
-    g0_reltol::T1
-    maxiter::T2
-    show_trace::Bool
+struct MinOptions{T1, T2, T3, T4, Txn, Tgn}
+  x_abstol::T1
+  x_reltol::T1
+  x_norm::Txn
+  g_abstol::T2
+  g_reltol::T2
+  g_norm::Tgn
+  f_limit::T3
+  f_abstol::T3
+  f_reltol::T3
+  nm_tol::T3
+  maxiter::T4
+  show_trace::Bool
 end
 
-MinOptions(; g_abstol=1e-8, g0_reltol=0.0, maxiter=10000, show_trace=false) =
-  MinOptions(g_abstol, g0_reltol, maxiter, show_trace)
+MinOptions(; x_abstol=0.0, x_reltol=0.0, x_norm=x->norm(x, Inf),
+             g_abstol=1e-8, g_reltol=0.0, g_norm=x->norm(x, Inf),
+             f_limit=-Inf, f_abstol=0.0, f_reltol=0.0,
+             nm_tol=1e-8, maxiter=10000, show_trace=false) =
+  MinOptions(x_abstol, x_reltol, x_norm,
+             g_abstol, g_reltol, g_norm,
+             f_limit, f_abstol, f_reltol,
+             nm_tol,
+             maxiter, show_trace)
 
 struct MinResults{Tr, Tc<:ConvergenceInfo, Th, Ts, To}
   res::Tr
@@ -65,7 +115,7 @@ convinfo(mr::MinResults) = mr.conv
 function converged(MinResults)
 end 
 function Base.show(io::IO, mr::MinResults)
-  println(io, "* Status: $(converged(mr))")
+  println(io, "* Status: $(any(converged(mr)))")
   println(io)
   println(io, "* Candidate solution")
   println(io, "  Minimizer: ", minimizer(mr))
@@ -98,3 +148,60 @@ end
   f(x) calls:    53
   ∇f(x) calls:   53
 =#
+
+function prepare_variables(objective, approach, x0, ∇fz, B)
+    z = x0
+    x = copy(z)
+
+    if isa(B, Nothing)  # didn't provide a B
+        if isa(modelscheme(approach), GradientDescent)
+            # We don't need to maintain a dense matrix for Gradient Descent
+            B = I
+        else
+            # Construct a matrix on the correct form and of the correct type
+            # with the content of I_{n,n}
+            B = I + abs.(0*x*x')
+        end
+    end
+    # first evaluation
+    if isa(modelscheme(approach), Newton)
+        fz, ∇fz, B = objective(x, ∇fz, B)
+    else
+        fz, ∇fz = objective(x, ∇fz)
+    end
+    fx = copy(fz)
+    ∇fx = copy(∇fz)
+    return x, fx, ∇fx, z, fz, ∇fz, B
+end
+
+function g_converged(∇fz, ∇f0, options)
+  g_converged = options.g_norm(∇fz) ≤ options.g_abstol
+  g_converged = g_converged || options.g_norm(∇fz) ≤ ∇f0*options.g_reltol
+  return g_converged
+end
+
+function x_converged(x, z, options)
+  y = x .- z
+  ynorm = options.x_norm(y)
+  x_converged = ynorm ≤ options.x_abstol
+  x_converged = x_converged || ynorm ≤ options.x_norm(x)*options.x_reltol
+  x_converged = x_converged || any(isnan.(z))
+  return x_converged
+end
+function f_converged(fx, fz, options)
+  y = fx - fz
+  ynorm = abs(y)
+  f_converged = ynorm ≤ options.f_abstol
+  f_converged = f_converged || ynorm ≤ abs(fx)*options.f_reltol
+  f_converged = f_converged || fz ≤ options.f_limit
+  f_converged = f_converged || isnan(fz)
+  return f_converged
+end
+function converged(approach, x, z, ∇fz, ∇f0, fx, fz, options, skip=nothing)
+  if approach isa TrustRegion && skip == true
+    # special logic for region reduction here
+    false
+  else
+    x_converged(x, z, options), g_converged(∇fz, ∇f0, options), f_converged(fx, fz, options)
+  end
+end

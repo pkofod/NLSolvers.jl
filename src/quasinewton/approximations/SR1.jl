@@ -5,11 +5,15 @@ struct SR1{T1} <: QuasiNewton{T1}
    approx::T1
 end
 SR1() = SR1(Direct())
+hasprecon(::SR1) = NoPrecon()
+
+summary(::SR1) = "SR1"
 function update(scheme::SR1{<:Inverse}, H, s, y)
    T = eltype(s)
    w = s - H*y
    θ = dot(w, y) # angle between residual and change in gradient
-   if abs(θ) ≥ T(1e-12)*norm(w)*norm(y)
+   ρy = norm(y)
+   if abs(θ) ≥ T(1e-12)*norm(w)*ρy && !iszero(ρy)
       H = H + (w*w')/θ
    end
    H
@@ -29,7 +33,8 @@ function update!(scheme::SR1{<:Inverse}, H, s, y)
    T = eltype(s)
    w = s - H*y
    θ = dot(w, y) # angle between residual and change in gradient
-   if abs(θ) ≥ T(1e-12)*norm(w)*norm(y)
+   ρy = norm(y)
+   if abs(θ) ≥ T(1e-12)*norm(w)*ρy && !iszero(ρy)
       H .= H .+ (w*w')/θ
    end
    H
@@ -50,12 +55,4 @@ function update!(scheme::SR1{<:Inverse}, A::UniformScaling, s, y)
 end
 function update!(scheme::SR1{<:Direct}, A::UniformScaling, s, y)
    update(scheme, A, s, y)
-end
-
-function find_direction(A, scheme::SR1, ::Direct, ∇f)
-   -(A\∇f)
-end
-function find_direction!(d, B, scheme::SR1, ::Direct, ∇f)
-   d .= -(B\∇f)
-   d
 end

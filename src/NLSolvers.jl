@@ -1,6 +1,6 @@
 module NLSolvers
 
-import Base: show
+import Base: show, summary
 
 #============================ LinearAlgebra ===========================
   We use often use the LinearAlgebra functions dot and norm for opera-
@@ -21,16 +21,19 @@ import Base: show
   the estimate on lambda
  ============================ LinearAlgebra ===========================#
 
-using LinearAlgebra: dot, I, norm,
-                     mul!, rmul!, ldiv!,
-                     cholesky, factorize, issuccess,
-                     UniformScaling, Symmetric, Hermitian, Diagonal,
-                     diag, # for trust region diagonal manipulation
-                     eigen,
+using LinearAlgebra: dot, I, norm, # used everywhere in updates, convergence, etc
+                     mul!, rmul!, ldiv!, # quasi-newton updates, apply factorizations, etc
+                     cholesky, factorize, issuccess, # very useful in trust region solvers
+                     UniformScaling, Diagonal, # simple matrices
+                     Symmetric, Hermitian, # wrap before factorizations or eigensystems to avoid checks
+                     diag, # mostly for trust region diagonal manipulation
+                     eigen, # for the direct subproblem solver
                      opnorm # for NWI safe guards
 
 # For better random number generators and rand!
 using RandomNumbers
+
+using Printf
 
 function solve end
 function solve! end
@@ -53,7 +56,7 @@ using StaticArrays
 abstract type MutateStyle end
 struct InPlace <: MutateStyle end
 struct OutOfPlace <:MutateStyle end
-
+include("precondition.jl")
 include("Manifolds.jl")
 include("objectives.jl")
 include("linearalgebra.jl")
@@ -61,6 +64,7 @@ export NonDiffed, OnceDiffed, TwiceDiffed
 
 # make this struct that has scheme and approx
 abstract type QuasiNewton{T1} end
+
 
 abstract type HessianApproximation end
 struct Inverse <: HessianApproximation end
@@ -76,14 +80,14 @@ export MinProblem, MinOptions
 # TODO:
 
 # Initial step
-abstract type LineSearch end
+abstract type LineSearcher end
 include("globalization/linesearches/root.jl")
 export Backtracking, Static, HZAW
 # step interpolations
 export FFQuadInterp
 
 include("globalization/trs_solvers/root.jl")
-export NWI, Dogleg, NTR#, TRSolver
+export NWI, Dogleg, NTR
 
 # Quasi-Newton (including Newton and gradient descent) functionality
 include("quasinewton/quasinewton.jl")
@@ -92,11 +96,14 @@ export DBFGS, BFGS, SR1, DFP, GradientDescent, Newton, BB
 # Include the actual functions that expose the functionality in this package.
 include("optimize/linesearch/linesearch.jl")
 include("optimize/randomsearch/randomsearch.jl")
+export SimulatedAnnealing
 include("optimize/directsearch/directsearch.jl")
 export NelderMead
 
 include("optimize/trustregions/trustregions.jl")
-export minimize, minimize!, OptProblem
+export minimize, minimize!, OptProblem, LineSearch, TrustRegion
+
+include("optimize/projectedgradient/asa.jl")
 
 include("nlsolve/root.jl")
 export nlsolve, nlsolve!, NEqProblem

@@ -2,17 +2,18 @@
 
 struct NWI <: NearlyExactTRSP
 end
+summary(::NWI) = "Trust Region (Newton, eigen)"
 
 """
-    initial_safeguards(B, g, Δ)
+    initial_safeguards(B, h, g, Δ)
 
 Returns a tuple of initial safeguarding values for λ. Newton's method might not
 work well without these safeguards when the Hessian is not positive definite.
 """
-function initial_safeguards(B, g, Δ)
+function initial_safeguards(B, h, g, Δ)
     # equations are on p. 560 of [MORESORENSEN]
     T = eltype(g)
-    λS = maximum(-diag(B))
+    λS = maximum(-h)
 
     # they state on the first page that ||⋅|| is the Euclidean norm
     gnorm = norm(g)
@@ -119,10 +120,16 @@ Returns:
 function (ms::NWI)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
     T = eltype(p)
     n = length(∇f)
-    Hdiag = diag(H)
+    H = H isa UniformScaling ? Diagonal(copy(∇f).*0 .+ 1) : H
+    h = diag(H)
+
     # Note that currently the eigenvalues are only sorted if H is perfectly
     # symmetric.  (Julia issue #17093)
-    QΛQ = H isa Diagonal ? eigen(H) : eigen(Symmetric(H))
+    if H isa Diagonal
+        QΛQ = eigen(H)
+    else
+        QΛQ = eigen(Symmetric(H))
+    end
     Q, Λ = QΛQ.vectors, QΛQ.values
     λmin, λmax = Λ[1], Λ[n]
     # Cache the inner products between the eigenvectors and the gradient.
@@ -195,15 +202,24 @@ function (ms::NWI)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
     solved = false
     # We cannot be in the λ = -λ₁ case, as the root is in (-λ₁, ∞) interval.
     λ = λ + sqrt(eps(T))
-    isg = initial_safeguards(H, ∇f, Δ)
+    isg = initial_safeguards(H, h, ∇f, Δ)
     λ = safeguard_λ(λ, isg)
     for iter in 1:maxiter
         λ_previous = λ
         for i = 1:n
-            @inbounds H[i, i] = Hdiag[i] + λ
+            @inbounds H[i, i] = h[i] + λ
         end
 
-        R = H isa Diagonal ? cholesky(H).U : cholesky(Hermitian(H)).U
+        F = H isa Diagonal ? cholesky(H; check=false) : cholesky(Hermitian(H); check=false)
+        if !issuccess(F)
+            # We should not be here, but the lower bound might fail for
+            # numerical reasons.
+            if λ < λ_lb
+                λ = T(1)/2 * (λ_previous - λ_lb) + λ_lb
+            end
+            continue
+        end
+        R = F.U
         p .= R \ (R' \ -∇f)
         q_l = R' \ p
 
@@ -222,7 +238,7 @@ function (ms::NWI)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
         end
     end
     for i = 1:n
-        @inbounds H[i, i] = Hdiag[i]
+        @inbounds H[i, i] = h[i]
     end
     m = dot(∇f, p) + dot(p, H * p)/2
     return (p=p, mz=m, interior=interior, λ=λ, hard_case=hard_case, solved=solved, Δ=Δ)

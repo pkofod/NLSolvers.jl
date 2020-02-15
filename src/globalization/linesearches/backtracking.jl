@@ -77,7 +77,7 @@ value as appropriate.
 
 
 """
-struct Backtracking{T1, T2, T3, TR} <: LineSearch
+struct Backtracking{T1, T2, T3, TR} <: LineSearcher
     ratio::T1
 	decrease::T1
 	maxiter::T2
@@ -85,13 +85,16 @@ struct Backtracking{T1, T2, T3, TR} <: LineSearch
 	steprange::TR
 	verbose::Bool
 end
+summary(bt::Backtracking) = "backtracking ("*summary(bt.interp)*")"
 Backtracking(; ratio=0.5, decrease=1e-4, maxiter=50,
 	           steprange=(0.0, Inf), interp=FixedInterp(),
 	           verbose=false) =
  Backtracking(ratio, decrease, maxiter, interp, steprange, verbose)
 
 struct FixedInterp <: BacktrackingInterp end
+summary(fi::FixedInterp) = ("no interp")
 struct FFQuadInterp <: BacktrackingInterp end
+summary(ffq::FFQuadInterp) = ("quadratic interp")
 struct FFFQuadInterp <: BacktrackingInterp end
 
 

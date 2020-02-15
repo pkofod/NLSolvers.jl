@@ -10,6 +10,10 @@ struct BFGS{T1} <: QuasiNewton{T1}
    approx::T1
 end
 BFGS(;inverse=true) = BFGS(inverse ? Inverse() : Direct())
+hasprecon(::BFGS) = NoPrecon()
+
+summary(bfgs::BFGS{Inverse}) = "Inverse BFGS"
+summary(bfgs::BFGS{Direct}) = "Direct BFGS"
 # function update!(scheme::BFGS, B::Inverse, Δx, y)
 #    B.A = B.A + y*y'/dot(Δx, y) - B.A*y*y'*B.A/(y'*B.A*y)
 # end

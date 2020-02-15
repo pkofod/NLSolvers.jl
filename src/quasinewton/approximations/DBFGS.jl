@@ -2,10 +2,11 @@ struct DBFGS{T1, T2} <: QuasiNewton{T1}
    approx::T1
    theta::T2
 end
-
 DBFGS(approx) = DBFGS(approx, 0.2)
 DBFGS(;inverse=true, theta=0.2) = DBFGS(inverse ? Inverse() : Direct(), theta)
-
+hasprecon(::DBFGS) = NoPrecon()
+summary(dbfgs::DBFGS{Inverse}) = "Inverse Damped BFGS"
+summary(dbfgs::DBFGS{Direct}) = "Direct Damped BFGS"
 
 function update!(scheme::DBFGS{<:Direct, <:Any}, B, s, y)
    # We could write this as
@@ -45,14 +46,14 @@ function update(scheme::DBFGS{<:Direct, <:Any}, B, s, y)
       # Calculate one vector divided by dot(s, b)
       ρbb = inv(sb)*b
       # And calculate
-      return B .+= (inv(σ)*y)*y' .- ρbb*b'
+      return B = B .+ (inv(σ)*y)*y' .- ρbb*b'
    else
       θ = 0.8*sb/(sb-σ)
       r = y*θ + (1-θ)*b
       # Calculate one vector divided by dot(s, b)
       ρbb = inv(dot(s, b))*b
       # And calculate
-      return B .+= (inv(dot(s, r))*r)*r' .- ρbb*b'
+      return B = B .+ (inv(dot(s, r))*r)*r' .- ρbb*b'
    end
 end
 function update(scheme::DBFGS{<:Inverse, <:Any}, H, s, y)

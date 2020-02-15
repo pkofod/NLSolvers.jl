@@ -108,7 +108,6 @@ point with a better point. More information can be found in [1], [2] or [3].
 function NelderMead()
     return NelderMead(0, x->(1.0, 2.0, 0.5, 0.5), nothing)
 end
-
 Base.summary(::NelderMead) = "Nelder-Mead"
 
 # centroid except h-th vertex
@@ -138,13 +137,16 @@ struct ValuedSimplex{TS, TV, TO}
 end
 ValuedSimplex(S, V) = ValuedSimplex(S, V, sortperm(V))
 
-function minimize!(obj::ObjWrapper, x0, method::NelderMead, as::AbstractSimplexer=ABA(x0.*0 .+ 1); itermax=20000)
+function minimize!(obj::ObjWrapper, x0, method::NelderMead, options)
+  minimize!(obj, x0, method, ABA(x0.*0 .+ 1), options)
+end
+function minimize!(obj::ObjWrapper, x0, method::NelderMead, as::AbstractSimplexer, options)
     simplex_vector = initial_simplex(as, x0)
     simplex_value = obj.(simplex_vector)
     order = sortperm(simplex_value)
     simplex = ValuedSimplex(simplex_vector, simplex_value, order)
-    res = minimize!(obj, simplex, method; itermax=itermax)
-    x0 .= res.minimizer
+    res = minimize!(obj, simplex, method, options)
+    x0 .= res.info.minimizer
     return res
 end
 
@@ -155,8 +157,10 @@ function NMCaches(simplex)
     return (x_reflect=x_reflect, x_cache=x_cache, x_centroid=x_centroid)
 end
 
-function minimize!(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead, nmcache=NMCaches(simplex); itermax=20000)
+function minimize!(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead, options::MinOptions, nmcache=NMCaches(simplex))
+    t0 = time()
     simplex_vector, simplex_value, i_order = simplex.S, simplex.V, simplex.O
+    f0 = minimum(simplex.V)
     n = length(first(simplex_vector))
     m = length(simplex_vector)
 
@@ -168,8 +172,15 @@ function minimize!(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead, 
 
     α, β, γ, δ = method.parameters(n)
     step_type = "none"
-    for iter = 1:itermax
-        iterate!(obj, method, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
+    iter = 0
+    nm_obj = f0
+    is_converged = false
+    while iter <= options.maxiter && !any(is_converged)
+        iter += 1
+        nm_obj, x_centroid = iterate!(obj, method, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
+        if nm_obj ≤ options.nm_tol
+            is_converged = true
+        end
     end
     f_centroid_min = obj(x_centroid)
     f_min, i_f_min = findmin(simplex_value)
@@ -178,7 +189,7 @@ function minimize!(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead, 
         x_min = x_centroid
         f_min = f_centroid_min
     end
-    (minimizer=x_min, minimum=f_min, centroid=x_centroid, simplex=simplex)
+    ConvergenceInfo(method, (nm_obj=nm_obj, centroid=x_centroid, simplex=simplex, minimizer=x_min, minimum=f_min, f0=f0, iter=iter, time=time()-t0), options)
 end
 function iterate!(obj, method::NelderMead, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
     # Augment the iteration counter
@@ -265,28 +276,30 @@ function iterate!(obj, method::NelderMead, simplex_vector, simplex_value, i_orde
     sortperm!(i_order, simplex_value)
 
     x_centroid = centroid!(x_centroid, simplex_vector, i_order[end])
-
-    nm_x = nmobjective(simplex_value)
+    nm_obj = nmobjective(simplex_value)
     # if nm_x < 1e-18
     #     break
     # end
     # check conv
+    nm_obj, x_centroid
 end
 
 #####################
 #    out-of-place   #
 #####################
-
-function minimize(obj::ObjWrapper, x0, method::NelderMead, as::AbstractSimplexer=ABA(x0.*0 .+ 1); itermax=20000)
+function minimize(obj::ObjWrapper, x0, method::NelderMead, options::MinOptions)
+  minimize(obj, x0, method, ABA(x0.*0 .+ 1), options)
+end
+function minimize(obj::ObjWrapper, x0, method::NelderMead, as::AbstractSimplexer, options::MinOptions)
     simplex_vector = initial_simplex(as, x0)
     simplex_value = obj.(simplex_vector)
     order = sortperm(simplex_value)
     simplex = ValuedSimplex(simplex_vector, simplex_value, order)
-    res = minimize!(obj, simplex, method; itermax=itermax)
-    x0 .= res.minimizer
-    return (minimizer=x0, minimum=res.minimum)
+    res = minimize!(obj, simplex, method, options)
+    x0 .= res.info.minimizer
+    return res
 end
-function minimize(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead; itermax=20000)
+function minimize(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead, options::MinOptions)
     simplex_vector, simplex_value = simplex.S, simplex.V
     n = length(first(simplex_vector))
     m = length(simplex_vector)
@@ -301,7 +314,10 @@ function minimize(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead; i
 
     α, β, γ, δ = method.parameters(n)
     step_type = "none"
-    for iter = 1:itermax
+    is_converged = false
+    while iter <= options.maxiter && !any(is_converged)
+        iter += 1
+
         # Augment the iteration counter
         shrink = false
 

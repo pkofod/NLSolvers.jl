@@ -13,7 +13,7 @@ We tweak the original algorithm slightly, by backtracking into a feasible
 region if the original step length results in function values that are not
 finite.
 """
-struct HZAW{T} <: LineSearch
+struct HZAW{T} <: LineSearcher
   decrease::T
   curvature::T
   θ::T
@@ -29,7 +29,7 @@ function HZAW(; decrease=0.1, curvature=0.9, theta=0.5, gamma=2/3)
   HZAW(decrease, curvature, theta, gamma)
 end
 
-function find_steplength(hzl::HZAW, φ, c, ϵk=1e-6)
+function find_steplength(hzl::HZAW, φ, c, ϵk=1e-6; maxiter = 100)
   # c = initial(k) but this is done outisde
   T = typeof(φ.φ0)
   ϵk = T(ϵk)
@@ -42,7 +42,6 @@ function find_steplength(hzl::HZAW, φ, c, ϵk=1e-6)
   # Backtrack into feasible region; not part of original algorithm
   ctmp, c = c, c
   iter = 0
-  maxiter = 10
   while !isfinite(φc) && iter <= maxiter
     iter += 1
     # don't use interpolation, this is vanilla backtracking
@@ -65,7 +64,7 @@ function find_steplength(hzl::HZAW, φ, c, ϵk=1e-6)
   aj, bj  = a0, b0
 
   # Main loop
-  while j < 100
+  while j < 50
     a, b = secant²(hzl, φ, aj, bj, ϵk)
     if b - a > hzl.γ*(bj - aj)
       c = (a + b)/2
@@ -79,6 +78,7 @@ function find_steplength(hzl::HZAW, φ, c, ϵk=1e-6)
       return c, φc, true
     end
   end
+  return T(NaN), T(NaN), false
 end
 _wolfe(φ0, dφ0, c, φc, dφc, δ, σ, ϵk) =  δ*dφ0 ≥ (φc-φ0)/c && dφc ≥ σ*dφ0
 _approx_wolfe(φ0, dφ0, c, φc, dφc, δ, σ, ϵk) = (2*δ-1)*dφ0 ≥ dφc ≥ σ*dφ0 && φc ≤ φ0 + ϵk
@@ -205,6 +205,7 @@ function secant²(hzl::HZAW, φ, a, b, ϵk)
     φA, dφA = φc, dφc
     _c = secant(hzl, a, dφa, A, dφA)
   end
+  updates
   if any(updates)
     #== S4.if: c was upper or lower bound ==#
     φ_c, dφ_c = φ(_c, true)

@@ -1,1 +1,2 @@
 CBB
+hasprecon(::CBB) = NoPrecon()

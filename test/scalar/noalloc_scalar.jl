@@ -21,23 +21,23 @@ end
 
 @testset "scalar no-alloc" begin
 scalar_obj = TwiceDiffed(fourth; infer=true)
-_alloc = @allocated minimize(scalar_obj, 4.0, SR1(Direct()))
-_alloc = @allocated minimize(scalar_obj, 4.0, SR1(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, LineSearch(SR1(Direct())), MinOptions())
+_alloc = @allocated minimize(scalar_obj, 4.0, LineSearch(SR1(Direct())), MinOptions())
 @test _alloc == 0
 
-_alloc = @allocated minimize(scalar_obj, 4.0, BFGS(Direct()))
-_alloc = @allocated minimize(scalar_obj, 4.0, BFGS(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, LineSearch(BFGS(Direct())), MinOptions())
+_alloc = @allocated minimize(scalar_obj, 4.0, LineSearch(BFGS(Direct())), MinOptions())
 @test _alloc == 0
 
-_alloc = @allocated minimize(scalar_obj, 4.0, DFP(Direct()))
-_alloc = @allocated minimize(scalar_obj, 4.0, DFP(Direct()))
+_alloc = @allocated minimize(scalar_obj, 4.0, LineSearch(DFP(Direct())), MinOptions())
+_alloc = @allocated minimize(scalar_obj, 4.0, LineSearch(DFP(Direct())), MinOptions())
 @test _alloc == 0
 
-_alloc = @allocated minimize(scalar_obj, 4.0, Newton())
-_alloc = @allocated minimize(scalar_obj, 4.0, Newton())
+_alloc = @allocated minimize(scalar_obj, 4.0, LineSearch(Newton()), MinOptions())
+_alloc = @allocated minimize(scalar_obj, 4.0, LineSearch(Newton()), MinOptions())
 @test _alloc == 0
 
-_alloc = @allocated minimize(scalar_obj, 4.0, Newton())
-_alloc = @allocated minimize(scalar_obj, 4.0, Newton())
+_alloc = @allocated minimize(scalar_obj, 4.0, LineSearch(Newton()), MinOptions())
+_alloc = @allocated minimize(scalar_obj, 4.0, LineSearch(Newton()), MinOptions())
 @test _alloc == 0
 end

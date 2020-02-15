@@ -1,14 +1,16 @@
-# TODO allow passing in a lambda and previous cholesky if the solution was not accepted
+# TODO allow passing in a lambda and previous cholesky if the
+# solution was not accepted
 # As described in Algorith, 7.3.4 in [CGTBOOK]
 struct NTR <: TRSPSolver
 end
+summary(::NTR) = "Trust Region (Newton, cholesky)"
 
 function initial_λs(∇f, H, Δ)
     n = length(∇f)
     T = eltype(∇f)
     Hfrob = norm(H, 2)
     Hinf  = norm(H, Inf)
-    max_diagH = maximum(diag(H))
+    max_h = maximum(diag(H))
 
     norm_to_Δ = norm(∇f)/Δ
 
@@ -24,132 +26,97 @@ function initial_λs(∇f, H, Δ)
         max_i_p = max(max_i_p, +H[j, j] + sumabs_j)
         max_i_m = max(max_i_m, -H[j, j] + sumabs_j)
     end
-    λL = max(T(0), norm_to_Δ - min(max_i_p, Hfrob, Hinf), - max_diagH)
+    λL = max(T(0), norm_to_Δ - min(max_i_p, Hfrob, Hinf), - max_h)
     λU = max(T(0), norm_to_Δ + min(max_i_m, Hfrob, Hinf))
     λL, λU
 end
+λ⁺_newton(λ, w, Δ) = λ + (s₂^2/dot(w,w))*(s₂ - Δ)/Δ
 function (ms::NTR)(∇f, H, Δ::T, s, scheme, λ0=0; abstol=1e-10, maxiter=50, κeasy=T(1)/10, κhard=T(2)/10) where T
     # λ0 might not be 0 if we come from a failed TRS solve
     λ = T(λ0)
     θ = T(1)/2
     n = length(∇f)
-    isg = initial_safeguards(H, ∇f, Δ)
+    H = H isa UniformScaling ? Diagonal(copy(∇f).*0 .+ 1) : H
+    h = H isa UniformScaling ? copy(∇f)*0+1 : diag(H)
+
+    isg = initial_safeguards(H, h, ∇f, Δ)
     λ = safeguard_λ(λ, isg)
     λL, λU = isg.L, isg.U
 
     s₂ = T(0.0)
-    diagH = diag(H)
-    if !(λ ==T(0))
-        for i = 1:n
-            @inbounds H[i, i] = diagH[i] + λ
-        end
-    end
 
     for iter = 1:maxiter
-        if !(λ ==T(0))
-            for i = 1:n
-                @inbounds H[i, i] = diagH[i] + λ
-            end
-        end
+        H = update_H!(H, h, λ)
         F = cholesky(Symmetric(H); check=false)
-        in𝓖 = false
+        in𝓖, linpack = false, false
         #===========================================================================
          If F is successful, then H is positive definite, and we can safely look
-         at the Newton step. If this is interior, we're good.
+         at the Newton step. If this is interior, we're done, if not, we're either
+         in L or G. In L, the Newton step stays in L and is safe to take. G requires
+         more work.
         ===========================================================================#
         if issuccess(F)
             # H(λ) is PD, so we're in 𝓕
-            linpack = false
             s .= (F\-∇f)
 
             s₂ = norm(s)
             if s₂ ≈ Δ
-                for i = 1:n
-                    H[i,i] = diagH[i]
-                end
+                H = update_H!(H, h)
                 return tr_return(; λ=λ, ∇f=∇f, H=H, s=s, interior=false, solved=true, hard_case=false, Δ=Δ)
             end
             if s₂ < Δ # in 𝓖 because we're in 𝓕, but curve below Δ
                 if λ == T(0)
-                    for i = 1:n
-                        H[i,i] = diagH[i]
-                    end
+                    H = update_H!(H, h)
                     return tr_return(;λ=λ, ∇f=∇f, H=H, s=s, interior=true, solved=true, hard_case=false, Δ=Δ)
-                else
-                    in𝓖 = true
-                    # we're in 𝓖 so λ is a new upper bound
-                    λU = λ
                 end
+                # we're in 𝓖 so λ is a new upper bound; λᴹ < λ
+                in𝓖 = true
+                λU = λ
             else # λ ∈ 𝓛
                 # in 𝓛 λ is a *lower* bound instead
                λL = λ
             end
             w = F.U'\s
+            # Newton trial step
             λ⁺ = λ + (s₂^2/dot(w,w))*(s₂ - Δ)/Δ
             if in𝓖
                 linpack = true
                 w, u = λL_with_linpack(F)
                 λL = max(λL, λ - dot(u, H*u))
-                pa = sum(abs2, u)
-                pb = 2*dot(u, s)
-                pc = sum(abs2, s)-Δ^2
-                pd = sqrt(4*pb^2-pa*pc)
-                α₁ = (-pb + pd)/2pa
-                α₂ = (-pb - pd)/2pa
 
-                s₁ = s + α₁*u
-                m₁ = dot(∇f, s₁) + dot(s₁, H * s₁)/2
-                s₂ = s + α₂*u
-                m₂ = dot(∇f, s₂) + dot(s₂, H * s₂)/2
-                if m₁ ≤ m₂
-                    α = α₁
-                else
-                    α = α₂
-                end
+                α, s_g, m_g = 𝓖_root(u, s, Δ, ∇f, H)
+                s .= s_g
 
                 s₂ = norm(s)
                 # check hard case convergnce
                 if α^2*dot(u, H*u) ≤ κhard*(dot(s, H*s)+λ*Δ^2)
-                    for i = 1:n
-                        H[i,i] = diagH[i]
-                    end
-                    println(iter)
-                    return tr_return(;λ=λ, ∇f=∇f, H=H, s=s, interior=false, solved=true, hard_case=true, Δ=Δ)
+                    H = update_H!(H, h)
+                    return tr_return(;λ=λ, ∇f=∇f, H=H, s=s, interior=false, solved=true, hard_case=true, Δ=Δ, m = m_g)
                 end
                 # If not the hard case solution, try to factorize H(λ⁺)
-                if !(λ ==T(0))
-                    for i = 1:n
-                        @inbounds H[i, i] = diagH[i] + λ⁺
-                    end
-                end
+                H = update_H!(H, h, λ⁺)
                 F = cholesky(H; check=false)
-                if issuccess(F)
-                    # Then we're in L, great! lemma 7.3.2
+                if issuccess(F) # Then we're in L, great! lemma 7.3.2
                     λ = λ⁺
-                else
+                else # we landed in N, this is bad, so use bounds to approach L
                     λ = max(sqrt(λL*λU), λL + θ*(λU - λL))
                 end 
+            else # in L, we can safely step
+                λ = λ⁺
             end
             # check for convergence
             if in𝓖 && abs(s₂ - Δ) ≤ κeasy * Δ
-                for i = 1:n
-                    H[i,i] = diagH[i]
-                end
+                H = update_H!(H, h)
                 return tr_return(;λ=λ, ∇f=∇f, H=H, s=s, interior=false, solved=true, hard_case=false, Δ=Δ)
             elseif abs(s₂ - Δ) ≤ κeasy * Δ # implicitly "if in 𝓕" since we're in that branch
                 # u and α comes from linpack
                 if linpack
                     if α^2*dot(u, H*u) ≤ κhard*(dot(sλ, H*sλ)*Δ^2)
                         s .= s .+ α*u
-                        for i = 1:n
-                            H[i,i] = diagH[i]
-                        end
+                        H = update_H!(H, h)
                         return tr_return(;λ=λ, ∇f=∇f, H=H, s=s, interior=false, solved=true, hard_case=false, Δ=Δ)
                     end
                 end
-            end
-            if !in𝓖
-                λ = λ⁺
             end
 
         else # λ ∈ 𝓝, because the factorization failed (typo in CGT)
@@ -157,15 +124,12 @@ function (ms::NTR)(∇f, H, Δ::T, s, scheme, λ0=0; abstol=1e-10, maxiter=50, �
             # H(λ) + δ*e*e' = 0. All we can do here is to find a better
             # lower bound, we cannot apply the newton step here.
             δ, v = λL_in_𝓝(H, F)
-            #== Step 3d ==#
-            λL = max(λL, λ + δ/dot(v, v))
-
-            # No convergence steps since we're in 𝓝
-            λ = max(sqrt(λL*λU), λL + θ*(λU - λL))
+            λL = max(λL, λ + δ/dot(v, v)) # update lower bound
+            λ = max(sqrt(λL*λU), λL + θ*(λU - λL)) # no converence possible, so step in bracket
         end
     end
+    tr_return(;λ=λ, ∇f=∇f, H=H, s=s, interior=true, solved=false, hard_case=false, Δ=Δ)
 end
-
 
 function λL_in_𝓝(H, F)
     T = eltype(F)
@@ -197,4 +161,19 @@ function λL_with_linpack(F)
     end
     sol = F.factors\w
     w, sol./norm(sol)
+end
+
+function 𝓖_root(u, s, Δ, ∇f, H)
+    pa = sum(abs2, u)
+    pb = 2*dot(u, s)
+    pd = sqrt(4*pb^2-pa*(sum(abs2, s)-Δ^2))
+    α₁ = (-pb + pd)/2pa
+    α₂ = (-pb - pd)/2pa
+
+    s₁ = s + α₁*u
+    m₁ = dot(∇f, s₁) + dot(s₁, H * s₁)/2
+    s₂ = s + α₂*u
+    m₂ = dot(∇f, s₂) + dot(s₂, H * s₂)/2
+    α, s, m = m₁ ≤ m₂ ? (α₁, s₁, m₁) : (α₂, s₂, m₂)
+    α, s, m
 end

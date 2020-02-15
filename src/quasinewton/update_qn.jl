@@ -12,7 +12,7 @@ function preallocate_qn_caches_inplace(x0)
     return cache
 end
 
-function update_obj!(objective, d, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothing)
+function update_obj!(objective, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothing)
     fz, ∇fz = objective(z, ∇fz)
     # add Project gradient
 
@@ -22,9 +22,15 @@ function update_obj!(objective, d, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothi
     # Update B
     if scale == nothing
         if isa(scheme.approx, Direct)
-            Badj = dot(y, d)/dot(y, y).*B
+            yBy = dot(y, B*y)
+            if !iszero(yBy)
+              Badj = dot(y, s)/yBy.*B
+            end
         else
-            Badj = dot(y, y)/dot(y, d).*B
+            ys = dot(y, s)
+            if !iszero(ys)
+                Badj = dot(y, B*y)/ys.*B
+            end
         end
     else
         Badj = B
@@ -35,13 +41,13 @@ function update_obj!(objective, d, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothi
     return fz, ∇fz, B
 end
 
-function update_obj!(objective, d, s, y, ∇fx, z, ∇fz, B, scheme::Newton, scale=nothing)
+function update_obj!(objective, s, y, ∇fx, z, ∇fz, B, scheme::Newton, scale=nothing)
     fz, ∇fz, B = objective(z, ∇fz, B)
 
     return fz, ∇fz, B
 end
 
-function update_obj(objective, d, s, ∇fx, z, ∇fz, B, scheme, scale=nothing)
+function update_obj(objective, s, ∇fx, z, ∇fz, B, scheme, scale=nothing)
     fz, ∇fz = objective(z, ∇fz)
     # add Project gradient
 
@@ -51,9 +57,19 @@ function update_obj(objective, d, s, ∇fx, z, ∇fz, B, scheme, scale=nothing)
     # Update B
     if scale == nothing
         if isa(scheme.approx, Direct)
-            Badj = dot(y, d)/dot(y, B* y)*B # this is different than above?
+            yBy = dot(y, B*y)
+            if !iszero(yBy) && isfinite(yBy)
+                Badj = dot(y, s)/yBy*B # this is different than above?
+            else
+                Badj = B
+            end
         else
-            Badj = dot(y, B* y)/dot(y, d)*B
+            ys = dot(y, s)
+            if !iszero(ys) && isfinite(ys)
+                Badj = dot(y, B*y)/ys*B
+            else
+                Badj = B
+            end
         end
     else
          Badj = B
@@ -65,7 +81,7 @@ function update_obj(objective, d, s, ∇fx, z, ∇fz, B, scheme, scale=nothing)
     return fz, ∇fz, B
 end
 
-function update_obj(objective, d, s, ∇fx, z, ∇fz, B, scheme::Newton, is_first=nothing)
+function update_obj(objective, s, ∇fx, z, ∇fz, B, scheme::Newton, is_first=nothing)
     fz, ∇fz, B = objective(z, ∇fx, B)
 
     return fz, ∇fz, B
