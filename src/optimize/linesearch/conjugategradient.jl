@@ -1,5 +1,5 @@
 # Might consider Daniel 1967 that uses second order
-# Make them inputs to a CG type
+# add preconditioner
 abstract type CGUpdate end
 struct ConjugateGradient{Tu, TP}
   update::Tu
@@ -9,6 +9,32 @@ ConjugateGradient(;update=HZ()) = ConjugateGradient(update, nothing)
 hasprecon(::ConjugateGradient{<:Any, <:Nothing}) = NoPrecon()
 hasprecon(::ConjugateGradient{<:Any, <:Any}) = HasPrecon()
 
+struct CGCache{T1, T2}
+    y::T1 # change in successive gradients
+    d::T2 # search direction
+    s::T2 # change in x
+end
+function CGCache(x, g)
+    CGCache(copy(g), copy(x), copy(x))
+end
+function preallocate_cg_caches(x0)
+    # Maintain gradient and state pairs in CGCache
+    cache = CGCache(x0, x0)
+    return cache
+end
+
+function prepare_variables(objective, approach::LineSearch{<:ConjugateGradient, <:Any}, x0, ∇fz)
+    z = x0
+    x = copy(z)
+
+    # first evaluation
+    fz, ∇fz = objective(x, ∇fz)
+
+    fx = copy(fz)
+    ∇fx = copy(∇fz)
+    return x, fx, ∇fx, z, fz, ∇fz, B
+end
+
 summary(::ConjugateGradient) = "Conjugate Gradient Descent"
 #### Conjugate Descent [Fletcher] (CD)
 struct CD <: CGUpdate end
@@ -16,18 +42,18 @@ _β(::CD, d, ∇fz, ∇fx, y, P) = -norm(∇fz)^2/dot(d, ∇fx)
 
 #### Hager-Zhang (HZ)
 struct HZ{Tη} <: CGUpdate
-	η::Tη # a "forcing term"
+    η::Tη # a "forcing term"
 end
 HZ() = HZ(1/100)
 function _β(cg::HZ, d, ∇fz, ∇fx, y, P)
-	T = eltype(∇fz)
+    T = eltype(∇fz)
 
-	ddy = dot(d, y)
-	βN = dot(y.-T(2).*d.*norm(y)^2/ddy, ∇fz)/ddy
+    ddy = dot(d, y)
+    βN = dot(y.-T(2).*d.*norm(y)^2/ddy, ∇fz)/ddy
 
-	ηk = -inv(norm(d)*min(T(cg.η), norm(∇fx)))
+    ηk = -inv(norm(d)*min(T(cg.η), norm(∇fx)))
 
-	βkp1 = max(βN, ηk)
+    βkp1 = max(βN, ηk)
 end
 
 #### Hestenes-Stiefel (HS)
@@ -71,71 +97,103 @@ minimize(obj::ObjWrapper, x0, approach::LineSearch{<:ConjugateGradient, <:LineSe
   _minimize(obj, x0, approach, options, OutOfPlace())
 
 function _minimize(obj::ObjWrapper, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions, mstyle::MutateStyle)
-	t0 = time()
-	Tx=eltype(x0)
-    cg, linesearch = modelscheme(approach), algorithm(approach)
+    t0 = time()
+    cache = preallocate_cg_caches(x0)
+    #==============
+         Setup
+    ==============#
+    Tx = eltype(x0)
 
-    fx, ∇fx = obj(x0, copy(x0))
+    x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(obj, approach, x0, copy(x0))
     ∇f0 = norm(∇fx)
     f0 = fx
-    fz = fx
-	α = Tx(0)
+
 
     P = initial_preconditioner(approach, x0)
+    α = Tx(0)
 
-	d, ∇fz = -copy(∇fx), copy(∇fx)
+    x, fx, ∇fx, z, fz, ∇fz, P = iterate(mstyle, cache, x, fx, ∇fx, z, fz, ∇fz, B, P, approach, obj, options)
+
+    d, ∇fz = -copy(∇fx), copy(∇fx)
     x, y = copy(x0), copy(∇fz)
-	z = copy(x)
-	k = 0
-	βkp1 = Tx(0)
+    z = copy(x)
+    β = Tx(0)
+    x, fx, ∇fx, z, fz, ∇fz, P, β = iterate(mstyle, cache, β, x, fx, ∇fx, z, fz, ∇fz, P, approach, obj, options)
+    k = 1
     is_converged = (false,false,false)
+    cg, linesearch = modelscheme(approach), algorithm(approach)
     while k ≤ options.maxiter && !any(is_converged)
-		# Set up line search
-        α_0 = initial(cg.update, a-> obj(x.+a.*d), α, k, x, fx, dot(d, ∇fx), ∇fx)
-		φ = _lineobjective(mstyle, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
-
-    	k += 1
-		# Perform line search
-		α, f_α, ls_success = find_steplength(linesearch, φ, Tx(1.0))
-		!ls_success && break
-		# move in direction
-		if mstyle isa InPlace
-            move(z, x, α, d, mstyle)
-			@. z = x + α*d
-        	fz, ∇fz = obj(z, ∇fz)
-        	@. y = ∇fz - ∇fx
-			βkp1 = _β(cg.update, d, ∇fz, ∇fx, y, P)
-            is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)	
-            any(is_converged) && break
-			fx = fz
-			x .= z
-			∇fx .= ∇fz
-
-			@. d = -∇fx + βkp1*d
-		elseif mstyle isa OutOfPlace
-			z = @. x + α*d
-			fz, ∇fz = obj(z, ∇fz)
-			y = @. ∇fz - ∇fx
-			βkp1 = _β(cg.update, d, ∇fz, ∇fx, y, P)
-            is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)	
-            any(is_converged) && break # only here until the first iteration is properly taken outside
-			fx = fz
-			x = copy(z)
-			∇fx = copy(∇fz)
-
-			d = @. -∇fx + βkp1*d
-		end
+        k += 1
+        x, fx, ∇fx, z, fz, ∇fz, P, β = iterate(mstyle, cache, β, x, fx, ∇fx, z, fz, ∇fz, P, approach, obj, options, false)
+        is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options) 
     end
     return ConvergenceInfo(approach, (beta=βkp1, Δx=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=k, time=time()-t0), options)
 end
+function iterate(mstyle::InPlace, cache, k, x, fx::Tf, ∇fx, z, fz, ∇fz, P, approach::LineSearch{<:ConjugateGradient, <:Any}, obj, options, is_first=nothing) where Tf
+    # split up the approach into the hessian approximation scheme and line search
+    scheme, linesearch = modelscheme(approach), algorithm(approach)
+    y, d, s = cache.y, cache.d, cache.s
 
-function initial(cg, φ, α, k, x, φ₀, dφ₀, ∇fx)
+    # Move nexts into currs
+    fx = fz
+    copyto!(x, z)
+    copyto!(∇fx, ∇fz)
+
+    # Update preconditioner
+    P = update_preconditioner(approach, x, P)
+    # Update current gradient and calculate the search direction
+    @. d = -∇fx + β*d
+
+    α_0 = initial(cg.update, a-> obj(x.+a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
+    φ = _lineobjective(mstyle, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
+
+    # Perform line search along d
+    α, f_α, ls_success = find_steplength(linesearch, φ, Tf(1))
+
+    # Calculate final step vector and update the state
+    @. z = x + α*d
+    fz, ∇fz = obj(z, ∇fz)
+    @. y = ∇fz - ∇fx
+    β = _β(cg.update, d, ∇fz, ∇fx, y, P)
+
+    return x, fx, ∇fx, z, fz, ∇fz, P, β
+end
+
+function iterate(mstyle::OutOfPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, P, approach::LineSearch{<:ConjugateGradient, <:Any}, obj, options, is_first=nothing) where Tf
+    # split up the approach into the hessian approximation scheme and line search
+    scheme, linesearch = modelscheme(approach), algorithm(approach)
+    # Move nexts into currs
+    fx = fz
+    x = copy(z)
+    ∇fx = copy(∇fz)
+
+    # Update preconditioner
+    P = update_preconditioner(approach, x, P)
+    @. d = -∇fx + β*d
+
+    α_0 = initial(cg.update, a-> obj(x.+a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
+    φ = _lineobjective(mstyle, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
+
+    # Perform line search along d
+    α, f_α, ls_success = find_steplength(linesearch, φ, Tf(1))
+
+    z = @. x + α*d
+    fz, ∇fz = obj(z, ∇fz)
+    y = @. ∇fz - ∇fx
+    β = _β(cg.update, d, ∇fz, ∇fx, y, P)
+
+    return x, fx, ∇fx, z, fz, ∇fz, P, β
+end
+
+
+
+function initial(cg, φ, α, x, φ₀, dφ₀, ∇fx, is_first)
     T = eltype(x)
     ψ₀ = T(0.01)
     ψ₁ = T(0.1)
     ψ₂ = T(2.0)
     quadstep = true
-    if k == 0
+    if is_first isa Nothing
         if !all(x .≈ T(0)) # should we define "how approx we want?"
             return ψ₀ * norm(x, Inf)/norm(∇fx, Inf)
         elseif !(φ₀ ≈ T(0))
@@ -146,25 +204,12 @@ function initial(cg, φ, α, k, x, φ₀, dφ₀, ∇fx)
     elseif quadstep
         R = ψ₁*α
         φR = φ(R)
-		if φR ≤ φ₀
-	        c = (φR - φ₀ - dφ₀*R)/R^2
-	        if c > 0
-		       return -dφ₀/(T(2)*c) # > 0 by df0 < 0 and c > 0
-	        end
-		end
+        if φR ≤ φ₀
+            c = (φR - φ₀ - dφ₀*R)/R^2
+            if c > 0
+               return -dφ₀/(T(2)*c) # > 0 by df0 < 0 and c > 0
+            end
+        end
     end
     return ψ₂*α
 end
-
-
-# function _β(method, ∇fx, ∇fz)
-#
-# if method == :fr
-# return dot(∇fz, ∇fz)/dot(∇fx, ∇fx)
-# elseif method == :pr
-# β = dot(∇fz, s)/dot(∇fx, ∇fx) # dot(∇fx, ∇fx) can be saved between iteratoins only s is needed
-# return    max(β, 0) # We need this according to Powell 1986 Gilbert Powell 1980 show it is globally  convergenct for exact and inexact
-# # pr+ max(beta, 0)
-# elseif method ==:hs
-# dot(∇fz, s)/dot(s,p)
-# end

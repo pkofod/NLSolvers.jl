@@ -1,3 +1,21 @@
+Fix up CG
+BFGS P or invH?
+LBFGS
+SAMIN
+PARTICLESWARM
+BOXES
+Projected solver
+preconditioning
+manifolds
+Univariate!!
+Complex numbers
+IP Newotn
+Krylov Hessian
+Anderson
+Mixed complementatiry
+LsqFit wrapper
+AD
+
 Problem types
 SHOULD EACH TR HAVE AN UPDATER FIELD?
 
@@ -237,3 +255,8 @@ res = minimize!(himmelblau!, copy([2.0,2.0]), (Newton(Direct()), NWI()))
 ```
 
 ## Custom solve
+
+## Preconditioning
+GradientDescent, ConjugateGradient and LBFGS accept preconditioners. A preconditioner is provided as a function that has two methods: `p(x)` and `p(x, P)` where the first prepares and returns the preconditioner
+and the second is the signature for updating the preconditioner. If the preconditioner is constant, both method
+will simply return this preconditioner. A preconditioner is used in two contexts: in `A_ldiv_B!(pgr, P, gr)` that accepts a cache array for the preconditioned gradient `pgr`, the preconditioner `P`, and the gradient to be preconditioned `gr`, and in `dot(x, P, y)` that applies the dot product induced by `P`. For the out-of-place methods (`minimize` as opposed to `minimize!`) it is sufficient to have `\(P, gr)` and `dot(x, P, y)` defined.
