@@ -1,39 +1,3 @@
-Fix up CG
-BFGS P or invH?
-LBFGS
-SAMIN
-PARTICLESWARM
-BOXES
-Projected solver
-preconditioning
-manifolds
-Univariate!!
-Complex numbers
-IP Newotn
-Krylov Hessian
-Anderson
-Mixed complementatiry
-LsqFit wrapper
-AD
-
-Problem types
-SHOULD EACH TR HAVE AN UPDATER FIELD?
-
-line search should have a short curcuit for very small steps
-
-MinProblem
-MaxProblem
-NEqProblem
-KrylovNEqProblem
-NLsqProblem
-
-ParallelObjWrapper (different types and then algorithms can call  `batch_value` and
-    take advantage. We can also set up N runs and wait for N calls to the objective
-    to launch on a gpu cluster (say N independent BFGS that just runs till whenever
-        they need a f(x) and then they wait for the others))
-
-[[[iterate(Problem) -> (state), iterate(state) -> state]]]
-[[[on a state you can call -> lsiterate or triterate to sub-iterate on the line search problem]]]
 # NLSolvers
 Still under construction, so stuff will break (and improve!). Feel free to reach out with ideas and requests.
 
