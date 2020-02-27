@@ -57,17 +57,17 @@ function Base.show(io::IO, ci::ConvergenceInfo)
       nm_converged(r) = 0.0
       println(io, "  √(Σ(yᵢ-ȳ)²)/n         = $(@sprintf("%.2e", info.nm_obj)) <= $(@sprintf("%.2e", opt.nm_tol)) ($(info.nm_obj<=opt.nm_tol))")
   else
-      println(io, "  |x - x'|              = $(@sprintf("%.2e", info.Δx)) <= $(@sprintf("%.2e", opt.x_abstol)) ($(info.Δx<=opt.x_abstol))")
-      println(io, "  |x - x'|/|x|          = $(@sprintf("%.2e", info.Δx/info[2])) <= $(@sprintf("%.2e", opt.x_reltol)) ($(info.Δx/info[2] <= opt.x_reltol))")
+      println(io, "  |x - x'|              = $(@sprintf("%.2e", info.ρs)) <= $(@sprintf("%.2e", opt.x_abstol)) ($(info.ρs<=opt.x_abstol))")
+      println(io, "  |x - x'|/|x|          = $(@sprintf("%.2e", info.ρs/info.ρx)) <= $(@sprintf("%.2e", opt.x_reltol)) ($(info.ρs/info.ρx <= opt.x_reltol))")
       if isfinite(opt.f_limit)
-        println(io, "  |f(x')|               = $(@sprintf("%.2e", info.fz)) <= $(@sprintf("%.2e", opt.f_limit)) ($(info.fz<=opt.f_limit))")
+        println(io, "  |f(x')|               = $(@sprintf("%.2e", info.minimum)) <= $(@sprintf("%.2e", opt.f_limit)) ($(info.minimum<=opt.f_limit))")
       end
       if haskey(info, :fx)
-        Δf = abs(info.fx-info.fz)
+        Δf = abs(info.fx-info.minimum)
         println(io, "  |f(x) - f(x')|        = $(@sprintf("%.2e", Δf)) <= $(@sprintf("%.2e", opt.f_abstol)) ($(Δf<=opt.f_abstol))")
-        println(io, "  |f(x) - f(x')|/|f(x)| = $(@sprintf("%.2e", Δf/info.fx)) <= $(@sprintf("%.2e", opt.f_reltol)) ($(Δf/info.fx<=opt.f_reltol))")
+        println(io, "  |f(x) - f(x')|/|f(x)| = $(@sprintf("%.2e", Δf/abs(info.fx))) <= $(@sprintf("%.2e", opt.f_reltol)) ($(Δf/abs(info.fx)<=opt.f_reltol))")
       end
-      if haskey(info, :∇fx) && haskey(info, :∇fz)
+      if haskey(info, :∇fz)
         ρ∇f = opt.g_norm(info.∇fz)
         println(io, "  |g(x)|                = $(@sprintf("%.2e", ρ∇f)) <= $(@sprintf("%.2e", opt.g_abstol)) ($(ρ∇f<=opt.g_abstol))")
         println(io, "  |g(x)|/|g(x₀)|        = $(@sprintf("%.2e", ρ∇f/info.∇f0)) <= $(@sprintf("%.2e", opt.g_reltol)) ($(ρ∇f/info.∇f0<=opt.g_reltol))")
@@ -154,9 +154,11 @@ function prepare_variables(objective, approach, x0, ∇fz, B)
     x = copy(z)
 
     if isa(B, Nothing)  # didn't provide a B
-        if isa(modelscheme(approach), GradientDescent)
+        if modelscheme(approach) isa GradientDescent
             # We don't need to maintain a dense matrix for Gradient Descent
             B = I
+        elseif modelscheme(approach) isa LBFGS
+            B = nothing
         else
             # Construct a matrix on the correct form and of the correct type
             # with the content of I_{n,n}

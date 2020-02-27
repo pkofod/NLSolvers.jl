@@ -23,13 +23,13 @@ for T = (Float16, Float32, Float64, Rational{BigInt}, Double32, Double64)
         if M == Newton
             obj = TwiceDiffed(myfun)
             res = minimize(obj, T(3.1), LineSearch(M()), options)
-            @test all(isa.([res.info.fz, res.info.∇fz, res.info.z], T))
+            @test all(isa.([res.info.minimum, res.info.∇fz, res.info.minimizer], T))
         else
             obj = OnceDiffed(myfun)
             res = minimize(obj, T(3.1), LineSearch(M(Direct())), options)
-            @test all(isa.([res.info.fz, res.info.∇fz, res.info.z], T))
+            @test all(isa.([res.info.minimum, res.info.∇fz, res.info.minimizer], T))
             res = minimize(obj, T(3.1), LineSearch(M(Inverse())), options)
-            @test all(isa.([res.info.fz, res.info.∇fz, res.info.z], T))
+            @test all(isa.([res.info.minimum, res.info.∇fz, res.info.minimizer], T))
         end
     end
 end

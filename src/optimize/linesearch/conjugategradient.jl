@@ -9,18 +9,12 @@ ConjugateGradient(;update=HZ()) = ConjugateGradient(update, nothing)
 hasprecon(::ConjugateGradient{<:Any, <:Nothing}) = NoPrecon()
 hasprecon(::ConjugateGradient{<:Any, <:Any}) = HasPrecon()
 
-struct CGCache{T1, T2}
+struct CGVars{T1, T2, T3}
     y::T1 # change in successive gradients
     d::T2 # search direction
-    s::T2 # change in x
-end
-function CGCache(x, g)
-    CGCache(copy(g), copy(x), copy(x))
-end
-function preallocate_cg_caches(x0)
-    # Maintain gradient and state pairs in CGCache
-    cache = CGCache(x0, x0)
-    return cache
+    α::T3
+    β::T3
+    ls_success::Bool
 end
 
 function prepare_variables(objective, approach::LineSearch{<:ConjugateGradient, <:Any}, x0, ∇fz)
@@ -32,7 +26,7 @@ function prepare_variables(objective, approach::LineSearch{<:ConjugateGradient, 
 
     fx = copy(fz)
     ∇fx = copy(∇fz)
-    return x, fx, ∇fx, z, fz, ∇fz, B
+    return x, fx, ∇fx, z, fz, ∇fz
 end
 
 summary(::ConjugateGradient) = "Conjugate Gradient Descent"
@@ -98,41 +92,34 @@ minimize(obj::ObjWrapper, x0, approach::LineSearch{<:ConjugateGradient, <:LineSe
 
 function _minimize(obj::ObjWrapper, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions, mstyle::MutateStyle)
     t0 = time()
-    cache = preallocate_cg_caches(x0)
     #==============
          Setup
     ==============#
     Tx = eltype(x0)
 
-    x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(obj, approach, x0, copy(x0))
-    ∇f0 = norm(∇fx)
-    f0 = fx
-
+    x, fx, ∇fx, z, fz, ∇fz = prepare_variables(obj, approach, x0, copy(x0))
+    f0, ∇f0 = fx, norm(∇fx)
 
     P = initial_preconditioner(approach, x0)
-    α = Tx(0)
 
-    x, fx, ∇fx, z, fz, ∇fz, P = iterate(mstyle, cache, x, fx, ∇fx, z, fz, ∇fz, B, P, approach, obj, options)
+    y, d, α, β = copy(∇fz), -copy(∇fx), Tx(0), Tx(0)
+    cgvars = CGVars(y, d, α, β, true)
 
-    d, ∇fz = -copy(∇fx), copy(∇fx)
-    x, y = copy(x0), copy(∇fz)
-    z = copy(x)
-    β = Tx(0)
-    x, fx, ∇fx, z, fz, ∇fz, P, β = iterate(mstyle, cache, β, x, fx, ∇fx, z, fz, ∇fz, P, approach, obj, options)
     k = 1
-    is_converged = (false,false,false)
-    cg, linesearch = modelscheme(approach), algorithm(approach)
+    x, fx, ∇fx, z, fz, ∇fz, P, cgvars = iterate(mstyle, cgvars, x, fx, ∇fx, z, fz, ∇fz, P, approach, obj, options)
+    is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)
     while k ≤ options.maxiter && !any(is_converged)
         k += 1
-        x, fx, ∇fx, z, fz, ∇fz, P, β = iterate(mstyle, cache, β, x, fx, ∇fx, z, fz, ∇fz, P, approach, obj, options, false)
+        x, fx, ∇fx, z, fz, ∇fz, P, cgvars = iterate(mstyle, cgvars, x, fx, ∇fx, z, fz, ∇fz, P, approach, obj, options, false)
         is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options) 
     end
-    return ConvergenceInfo(approach, (beta=βkp1, Δx=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=k, time=time()-t0), options)
+    return ConvergenceInfo(approach, (beta=β, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fx=∇fx, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=k, time=time()-t0), options)
 end
-function iterate(mstyle::InPlace, cache, k, x, fx::Tf, ∇fx, z, fz, ∇fz, P, approach::LineSearch{<:ConjugateGradient, <:Any}, obj, options, is_first=nothing) where Tf
+function iterate(mstyle::InPlace, cgvars::CGVars, x, fx, ∇fx, z, fz, ∇fz, P, approach::LineSearch{<:ConjugateGradient, <:Any}, obj, options, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
+    Tx = eltype(x)
     scheme, linesearch = modelscheme(approach), algorithm(approach)
-    y, d, s = cache.y, cache.d, cache.s
+    y, d, α, β = cgvars.y, cgvars.d, cgvars.α, cgvars.β
 
     # Move nexts into currs
     fx = fz
@@ -144,24 +131,27 @@ function iterate(mstyle::InPlace, cache, k, x, fx::Tf, ∇fx, z, fz, ∇fz, P, a
     # Update current gradient and calculate the search direction
     @. d = -∇fx + β*d
 
-    α_0 = initial(cg.update, a-> obj(x.+a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
+    α_0 = initial(scheme.update, a-> obj(x.+a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
     φ = _lineobjective(mstyle, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # Perform line search along d
-    α, f_α, ls_success = find_steplength(linesearch, φ, Tf(1))
+    α, f_α, ls_success = find_steplength(linesearch, φ, Tx(1))
 
     # Calculate final step vector and update the state
     @. z = x + α*d
     fz, ∇fz = obj(z, ∇fz)
     @. y = ∇fz - ∇fx
-    β = _β(cg.update, d, ∇fz, ∇fx, y, P)
+    β = _β(scheme.update, d, ∇fz, ∇fx, y, P)
 
-    return x, fx, ∇fx, z, fz, ∇fz, P, β
+    return x, fx, ∇fx, z, fz, ∇fz, P, CGVars(y, d, α, β, ls_success)
 end
 
-function iterate(mstyle::OutOfPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, P, approach::LineSearch{<:ConjugateGradient, <:Any}, obj, options, is_first=nothing) where Tf
+function iterate(mstyle::OutOfPlace, cgvars::CGVars, x, fx, ∇fx, z, fz, ∇fz, P, approach::LineSearch{<:ConjugateGradient, <:Any}, obj, options, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
+    Tx = eltype(x)
     scheme, linesearch = modelscheme(approach), algorithm(approach)
+    d, α, β = cgvars.d, cgvars.α, cgvars.β
+
     # Move nexts into currs
     fx = fz
     x = copy(z)
@@ -169,20 +159,20 @@ function iterate(mstyle::OutOfPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, P, a
 
     # Update preconditioner
     P = update_preconditioner(approach, x, P)
-    @. d = -∇fx + β*d
+    d = @. -∇fx + β*d
 
-    α_0 = initial(cg.update, a-> obj(x.+a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
+    α_0 = initial(scheme.update, a-> obj(x.+a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
     φ = _lineobjective(mstyle, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # Perform line search along d
-    α, f_α, ls_success = find_steplength(linesearch, φ, Tf(1))
+    α, f_α, ls_success = find_steplength(linesearch, φ, Tx(1))
 
     z = @. x + α*d
     fz, ∇fz = obj(z, ∇fz)
     y = @. ∇fz - ∇fx
-    β = _β(cg.update, d, ∇fz, ∇fx, y, P)
+    β = _β(scheme.update, d, ∇fz, ∇fx, y, P)
 
-    return x, fx, ∇fx, z, fz, ∇fz, P, β
+    return x, fx, ∇fx, z, fz, ∇fz, P, CGVars(y, d, α, β, ls_success)
 end
 
 

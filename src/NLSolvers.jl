@@ -91,7 +91,7 @@ export NWI, Dogleg, NTR
 
 # Quasi-Newton (including Newton and gradient descent) functionality
 include("quasinewton/quasinewton.jl")
-export DBFGS, BFGS, SR1, DFP, GradientDescent, Newton, BB
+export DBFGS, BFGS, SR1, DFP, GradientDescent, Newton, BB, LBFGS
 
 # Include the actual functions that expose the functionality in this package.
 include("optimize/linesearch/linesearch.jl")
@@ -110,4 +110,16 @@ export nlsolve, nlsolve!, NEqProblem
 export ResidualKrylov, ResidualKrylovProblem
 # Forcing Terms
 export FixedForceTerm, DemboSteihaug, EisenstatWalkerA, EisenstatWalkerB
+
+function negate!(A::AbstractArray)
+  @inbounds for i in eachindex(A)
+    A[i] = -A[i]
+  end
+  A
+end
+function negate(A::AbstractArray)
+  -A
+end
+
+
 end # module

@@ -185,7 +185,10 @@ end
 
 function secant(hzl::HZAW, a, dφa, b, dφb)
   # verified against paper description [p. 123, CG_DESCENT_851]
-  (a*dφb - b*dφa)/(dφb - dφa)
+  #(a*dφb - b*dφa)/(dφb - dφa)
+  # It has been observed that dφa can be very close to dφb,
+  # so we avoid taking the difference
+  a/(1 - dφa/dφb) + b/(1 - dφb/dφa)
 end
 function secant²(hzl::HZAW, φ, a, b, ϵk)
   # verified against paper description [p. 123, CG_DESCENT_851]

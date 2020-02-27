@@ -1,3 +1,17 @@
+struct QNVars{T, Ty}
+    d::T # search direction
+    s::T # change in x
+    y::Ty # change in successive gradients
+end
+function QNVars(x, g)
+    QNVars(copy(g), copy(x), copy(x))
+end
+function preallocate_qn_caches_inplace(x0)
+    # Maintain gradient and state pairs in QNVars
+    cache = QNVars(x0, x0)
+    return cache
+end
+
 function minimize(obj::ObjWrapper, x0, approach::LineSearch, options::MinOptions)
     minimize(obj, (x0, nothing), approach, options)
 end
@@ -17,10 +31,11 @@ function _minimize(mstyle, obj::ObjWrapper, s0::Tuple, approach::LineSearch, opt
     #==============
          Setup
     ==============#
+    x0, B0 = s0
     T = eltype(x0)
     
-    x0, B0 = s0
     x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(obj, approach, x0, copy(x0), B0)
+    qnvars = QNVars(copy(∇fz), copy(∇fz), copy(∇fz))
     ∇f0 = norm(∇fz, Inf) 
     f0 = fz
 
@@ -28,19 +43,19 @@ function _minimize(mstyle, obj::ObjWrapper, s0::Tuple, approach::LineSearch, opt
     #========================
          First iteration
     ========================#
-    x, fx, ∇fx, z, fz, ∇fz, B, P = iterate(mstyle, cache, x, fx, ∇fx, z, fz, ∇fz, B, P, approach, obj, options)
+    x, fx, ∇fx, z, fz, ∇fz, B, P, qnvars = iterate(mstyle, qnvars, x, fx, ∇fx, z, fz, ∇fz, B, P, approach, obj, options)
     iter = 1
     # Check for gradient convergence
     is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)
     while iter <= options.maxiter && !any(is_converged)
         iter += 1
         # take a step and update approximation
-        x, fx, ∇fx, z, fz, ∇fz, B, P = iterate(mstyle, cache, x, fx, ∇fx, z, fz, ∇fz, B, P, approach, obj, options, false)
+        x, fx, ∇fx, z, fz, ∇fz, B, P, qnvars = iterate(mstyle, qnvars, x, fx, ∇fx, z, fz, ∇fz, B, P, approach, obj, options, false)
         # Check for gradient convergence
         is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)
     end
 
-    return ConvergenceInfo(approach, (P=P,B=B, Δx=norm(x.-z), ρx=norm(x), z=z, fx=fx, fz=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
+    return ConvergenceInfo(approach, (P=P,B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
 function iterate(mstyle::InPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, B, P, approach::LineSearch, obj, options, is_first=nothing) where Tf
     # split up the approach into the hessian approximation scheme and line search
@@ -66,8 +81,8 @@ function iterate(mstyle::InPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, B, P, a
     @. z = x + s
 
     # Update approximation
-    fz, ∇fz, B = update_obj!(obj, s, y, ∇fx, z, ∇fz, B, scheme, is_first)
-    return x, fx, ∇fx, z, fz, ∇fz, B, P
+    fz, ∇fz, B, s, y = update_obj!(obj, s, y, ∇fx, z, ∇fz, B, scheme, is_first)
+    return x, fx, ∇fx, z, fz, ∇fz, B, P, QNVars(d, s, y)
 end
 
 function iterate(mstyle::OutOfPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, B, P, approach::LineSearch, obj, options, is_first=nothing) where Tf
@@ -92,7 +107,7 @@ function iterate(mstyle::OutOfPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, B, P
     z = @. x + s
 
     # Update approximation
-    fz, ∇fz, B = update_obj(obj, s, ∇fx, z, ∇fz, B, scheme, is_first)
+    fz, ∇fz, B, s, y = update_obj(obj, s, ∇fx, z, ∇fz, B, scheme, is_first)
 
-    return x, fx, ∇fx, z, fz, ∇fz, B, P
+    return x, fx, ∇fx, z, fz, ∇fz, B, P, QNVars(d, s, y)
 end

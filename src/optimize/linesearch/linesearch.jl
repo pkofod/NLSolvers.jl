@@ -1,12 +1,14 @@
 """
   LineSearch(scheme, linesearcher)
 """
-struct LineSearch{S, LS}
+struct LineSearch{S, LS, K}
   scheme::S
   linesearcher::LS
+  scaling::K
 end
-LineSearch() = LineSearch(DBFGS(), Backtracking())
-LineSearch(m) = LineSearch(m, Backtracking())
+LineSearch() = LineSearch(DBFGS(), Backtracking(), InitialScaling(ShannoPhua()))
+LineSearch(m) = LineSearch(m, Backtracking(), InitialScaling(ShannoPhua()))
+LineSearch(m, ls) = LineSearch(m, ls, InitialScaling(ShannoPhua()))
 
 hasprecon(ls::LineSearch) = hasprecon(modelscheme(ls))
 summary(ls::LineSearch) = summary(modelscheme(ls))*" with "*summary(algorithm(ls))
@@ -22,3 +24,4 @@ include("conjugategradient.jl")
 export ConjugateGradient
 
 include("quasinewton.jl")
+include("limitedquasinewton.jl")

@@ -23,7 +23,7 @@ function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, opti
         # Check for gradient convergence
         is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options, accept)
     end
-    return ConvergenceInfo(approach, (Δx=norm(x.-z), ρx=norm(x), z=z, fx=fx, fz=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
+    return ConvergenceInfo(approach, (Δx=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
 
 
