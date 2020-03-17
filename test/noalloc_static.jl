@@ -7,7 +7,7 @@
         end
     end
 
-    function fletcher_powell_fg_static(∇f, x)
+    function fletcher_powell_fg_static(x, ∇f=nothing)
         T = eltype(x)
         theta_x = theta(x)
 

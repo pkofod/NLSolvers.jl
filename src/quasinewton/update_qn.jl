@@ -16,6 +16,8 @@ function update_obj!(objective, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothing)
             ys = dot(y, s)
             if !iszero(ys)
                 Badj = dot(y, B*y)/ys.*B
+            else
+                return fz, ∇fz, B, s, y
             end
         end
     else

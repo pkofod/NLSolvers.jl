@@ -9,7 +9,7 @@ function theta(x)
 end
 f(x) = 100.0 * ((x[3] - 10.0 * theta(x))^2 + (sqrt(x[1]^2 + x[2]^2) - 1.0)^2) + x[3]^2
 
-function f∇f!(∇f, x)
+function f∇f!(x, ∇f)
     if !(∇f==nothing)
         if ( x[1]^2 + x[2]^2 == 0 )
             dtdx1 = 0;
@@ -29,14 +29,14 @@ function f∇f!(∇f, x)
     objective_return(fx, ∇f)
 end
 
-function f∇f(∇f, x)
+function f∇f(x, ∇f)
     if !(∇f == nothing)
         ∇f = similar(x)
     end
     fx, ∇f = f∇f!(gx, x)
     objective_return(fx, ∇f)
 end
-function f∇fs(∇f, x)
+function f∇fs(x, ∇f)
     if !(∇f == nothing)
         if ( x[1]^2 + x[2]^2 == 0 )
             dtdx1 = 0;
@@ -173,7 +173,7 @@ for _method in (GradientDescent, BFGS, DBFGS, DFP, SR1, LBFGS)
 end
 println()
 
-function himmelblau!(∇f, x)
+function himmelblau!(x, ∇f)
     if !(∇f == nothing)
         ∇f[1] = 4.0 * x[1]^3 + 4.0 * x[1] * x[2] -
             44.0 * x[1] + 2.0 * x[1] + 2.0 * x[2]^2 - 14.0
@@ -186,7 +186,7 @@ function himmelblau!(∇f, x)
 end
 
 
-function himmelblaus(∇f, x)
+function himmelblaus(x, ∇f)
     fx = (x[1]^2 + x[2] - 11)^2 + (x[1] + x[2]^2 - 7)^2
     if !(∇f == nothing)
         ∇f1 = 4.0 * x[1]^3 + 4.0 * x[1] * x[2] -
@@ -198,10 +198,10 @@ function himmelblaus(∇f, x)
     objective_return(fx, ∇f)
 end
 
-function himmelblau(∇f, x)
+function himmelblau(x, ∇f)
     g = ∇f == nothing ? ∇f : similar(x)
 
-    return himmelblau!(g, x)
+    return himmelblau!(x, g)
 end
 
 him_inplace = OnceDiffed(himmelblau!)

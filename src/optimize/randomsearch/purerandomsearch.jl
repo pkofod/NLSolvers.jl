@@ -15,9 +15,8 @@ function.
 
 """
 
-struct PureRandomSearch{T, P}
+struct PureRandomSearch{T}
     draw::T
-    parstyle::P
 end
 
 function PureRandomSearch(; draw=nothing, lb=nothing, ub=nothing)
@@ -28,16 +27,20 @@ function PureRandomSearch(; draw=nothing, lb=nothing, ub=nothing)
         width = ub .- lb
         T = eltype(width)
         N = length(width)
-        draw = () -> width .* rand(T, N) .+ lb
+        _draw(xbest=nothing) = width .* rand(T, N) .+ lb
+    else
+        _draw = draw
     end
-    PureRandomSearch(draw)
+    PureRandomSearch(_draw)
 end
-function minimize(objective, prs::PureRandomSearch; maxiter = 100)
+minimize!(objective, prs::PureRandomSearch, options=MinOptions()) =
+  minimize(objective, prs::PureRandomSearch, options)
+function minimize(objective, prs::PureRandomSearch, options=MinOptions())
     xbest = prs.draw()
-    fbest = objective(nothing, xbest)
-    for i = 1:maxiter
-        xcandidate = prs.draw()
-        fcandidate = objective(nothing, xcandidate)
+    fbest = objective(xbest)
+    for i = 1:options.maxiter
+        xcandidate = prs.draw(xbest)
+        fcandidate = objective(xcandidate)
         if fcandidate ≤ fbest
             fbest = fcandidate
             xbest = copy(xcandidate)

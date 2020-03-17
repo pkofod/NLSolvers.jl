@@ -1,10 +1,15 @@
 # The simple
-struct Newton{T1, Tlin, TSeq} <: QuasiNewton{T1}
+struct Newton{T1, Tlin} <: QuasiNewton{T1}
    approx::T1
    linsolve::Tlin
-   sequence::TSeq
 end
 hasprecon(::Newton) = NoPrecon()
 
 # struct DefaultSequence end
-Newton(;approx=Direct(), linsolve=\, sequence=NWI()) = Newton(approx, linsolve, sequence)
+DefaultNewtonLinsolve(B::Number, g) = B\g
+DefaultNewtonLinsolve(B, g) = B\g
+function DefaultNewtonLinsolve(d, B, g)
+  d .= (B\g)
+end
+Newton(;approx=Direct(), linsolve=DefaultNewtonLinsolve) = Newton(approx, linsolve)
+summary(::Newton{<:Direct, <:typeof(DefaultNewtonLinsolve)}) = "Newton's method with default linsolve"

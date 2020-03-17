@@ -7,27 +7,38 @@
 NLSolvers provides optimization, curve fitting, and equation solving functionalities for Julia.
 The goal is to provide a set of robust and flexible methods that runs fast and is easy to use.
 
-Made a "mehtod vars"
 
+Two types of functions:
+WorkVars # x, F, J, H, ??
+AlgVars # s, y, z, ...
+Documented in each type's docstring including LineSearch, BFGS, ....
+
+AlgVars = (LSVars, QNVars, ...)
+
+
+Make a "metho vars"
 Initial modelvars and QNvars
-BFGS P or invH?
-SAMIN
-PARTICLESWARM
-BOXES
-Projected solver
+initial convergence checks
+tracing!
+Abstract arrays!!! :|
 preconditioning
 manifolds
+Use user norms
+allow linsolve! especially nleq
+MArray support
+Banded Jacobian
+AD
+nan return, nan gradient, nan hessian
+SAMIN
+BOXES
+Projected solver
 Univariate!!
-Complex numbers
 IP Newotn
 Krylov Hessian
-Anderson
-Mixed complementatiry
 LsqFit wrapper
-AD
-
-Problem types
-SHOULD EACH TR HAVE AN UPDATER FIELD?
+BFGS P or invH?
+LBFGS scaling needs to be different from initial and every time. maybe use preconditioner for that!
+value(prob, args...) = prob.F(args...)
 
 line search should have a short curcuit for very small steps
 
@@ -36,11 +47,6 @@ MaxProblem
 NEqProblem
 KrylovNEqProblem
 NLsqProblem
-
-ParallelObjWrapper (different types and then algorithms can call  `batch_value` and
-    take advantage. We can also set up N runs and wait for N calls to the objective
-    to launch on a gpu cluster (say N independent BFGS that just runs till whenever
-        they need a f(x) and then they wait for the others))
 
 [[[iterate(Problem) -> (state), iterate(state) -> state]]]
 [[[on a state you can call -> lsiterate or triterate to sub-iterate on the line search problem]]]
@@ -270,3 +276,32 @@ res = minimize!(himmelblau!, copy([2.0,2.0]), (Newton(Direct()), NWI()))
 GradientDescent, ConjugateGradient and LBFGS accept preconditioners. A preconditioner is provided as a function that has two methods: `p(x)` and `p(x, P)` where the first prepares and returns the preconditioner
 and the second is the signature for updating the preconditioner. If the preconditioner is constant, both method
 will simply return this preconditioner. A preconditioner is used in two contexts: in `A_ldiv_B!(pgr, P, gr)` that accepts a cache array for the preconditioned gradient `pgr`, the preconditioner `P`, and the gradient to be preconditioned `gr`, and in `dot(x, P, y)` that applies the dot product induced by `P`. For the out-of-place methods (`minimize` as opposed to `minimize!`) it is sufficient to have `\(P, gr)` and `dot(x, P, y)` defined.
+
+## Wrapping a LeastSquares problem for MinProblems
+To be able to do inplace least squares problems it is necessary to provide proper cache arrays to be used internally. To do this we write
+
+```julia
+@. model(x, p) = p[1]*exp(-x*p[2])
+xdata = range(0, stop=10, length=20)
+ydata = model(xdata, [1.0 2.0]) + 0.01*randn(length(xdata))
+p0 = [0.5, 0.5]
+
+using ForwardDiff
+function F(p)
+  model(xdata, p)
+end
+function J(p)
+  ForwardDiff.jacobian(F, p)
+end
+function obj(_J, _F, x)
+    f = F(x)
+    j = _J isa Nothing ? _J : J(x)
+    objective_return(f, j)
+end
+od = OnceDiffed(obj)
+lw = LsqWrapper1(od, true, true)
+```
+
+
+# next steps 
+Mixed complementatiry

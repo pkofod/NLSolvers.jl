@@ -1,43 +1,46 @@
 #===============================================================================
   Anderson acceleration is a fixed point iteration acceleration method. A fixed
-  point problem is one of finding a solution to G(x) = x or alternatively to
-  find a solution to F(x) = G(x) - x = 0. To allow for easy switching between
+  point problem is one of finding a solution to g(x) = x or alternatively to
+  find a solution to F(x) = g(x) - x = 0. To allow for easy switching between
   methods, we write the code in the F(x) = 0 form, but it really is of no impor-
   tance. This makes it a bit simpler to keep a consistent naming scheme as well,
-  since convergence is measured in F(x) not G(x) directly.
+  since convergence is measured in F(x) not g(x) directly.
 ===============================================================================#
-struct Anderson{T}
-  delay::T
-  memory::T
+struct Anderson{Ti, Tb, Td}
+  delay::Ti
+  memory::Ti
+  beta::Tb
+  droptol::Td
 end
-Anderson() = Anderson(1)
+Anderson() = Anderson(0, 5, nothing, nothing)
 function vv_shift!(G)
   for i = 1:length(G)-1
     G[i] = G[i+1]
   end
 end
 
-                  # args
-function nlsolve!(G::NonDiffed, x,
-                  anderson::Anderson;
-                  # kwargs
-                  Gx = similar(x),
-                  Fx = similar(x),
-                  f_abstol=sqrt(eltype(x)))
+                     # args
+function fixedpoint!(g, x,
+                     anderson::Anderson;
+                     # kwargs
+                     Gx = similar(x),
+                     Fx = similar(x),
+                     f_abstol=sqrt(eps(eltype(x))),
+                     maxiter=100)
   #==============================================================
     Do initial function iterations; default is a delay of 0,
-    but we always do at least one evaluation of G, so set up AA.
+    but we always do at least one evaluation of G, to set up AA.
 
-    Notation: AA solves G(x) - x = 0 or F(x) = 0
+    Notation: AA solves g(x) - x = 0 or F(x) = 0
   ==============================================================#  
-  Gx = G(x, Gx)
+  Gx  = g(x, Gx)
   Fx .= Gx .- x
-  x .= Gx
+  x  .= Gx
   for i = 1:anderson.delay
-    Gx = G(x, Gx)
-	Fx .= Gx .- x
+    Gx = g(x, Gx)
+    Fx .= Gx .- x
     x .= Gx
-    finite_check = isfinite(x)
+    finite_check = all(isfinite.(x)) # non-allocating?
     if norm(Fx) < f_abstol || !finite_check
       return (x=x, Fx=Fx, acc_iter=0, finite=finite_check)
     end
@@ -55,8 +58,6 @@ function nlsolve!(G::NonDiffed, x,
   Q = x*x[1:memory]'
   R = x[1:memory]*x[1:memory]'
 
-  x_cache = similar(x)
-
   #==============================================================
     Start Anderson Acceleration. We use QR updates to add new
     successive changes in G to the system, and once the memory
@@ -64,15 +65,17 @@ function nlsolve!(G::NonDiffed, x,
     ges we have stored.
   ==============================================================#
   effective_memory = 0
+  beta = nothing
 
-  G = [copy(x) for i=1:memory)]
+  G = [copy(x) for i=1:memory]
   Δg = copy(Gx)
   Δf = copy(Fx)
 
-  Gold = similar(x)
-  for k = 1:itermax
-    Gx = G(x, Gx)
-	Fx .= Gx .- x
+  Gold = copy(Gx)
+  for k = 1:maxiter
+    Fold = copy(Fx)
+    Gx = g(x, Gx)
+	  Fx .= Gx .- x
     x .= Gx
 
     # is this actually needed? I think we can avoid these
@@ -83,11 +86,11 @@ function nlsolve!(G::NonDiffed, x,
     Fold .= Fx
 
     effective_memory += 1
-
+    memory
     # if we've exhausted the memory, downdate
-    if effective_memory > m
+    if effective_memory > memory
       vv_shift!(G)
-      qrdelete!(Q, R, m)
+      qrdelete!(Q, R, memory)
       effective_memory -= 1
     end
 
@@ -95,15 +98,15 @@ function nlsolve!(G::NonDiffed, x,
     G[effective_memory] .= Δg
 
     # QR update
-	qradd!(Q, R, vec(Δf), effective_memory)
+  	qradd!(Q, R, vec(Δf), effective_memory)
 
-	# Create views for the system depending on the effective memory counter
-	Qv = view(Q, :, 1:effective_memory)
-	Rv = UpperTriangular(view(R, 1:effective_memory, 1:effective_memory))
+  	# Create views for the system depending on the effective memory counter
+  	Qv = view(Q, :, 1:effective_memory)
+  	Rv = UpperTriangular(view(R, 1:effective_memory, 1:effective_memory))
 
-	# check condition number
-    if !isa(droptol, Nothing)
-        while cond(Rv) > droptol && effective_memory > 1
+  	# check condition number
+    if !isa(anderson.droptol, Nothing)
+        while cond(Rv) > anderson.droptol && effective_memory > 1
             qrdelete!(Q, R, effective_memory)
 
             effective_memory -= 1
@@ -113,21 +116,21 @@ function nlsolve!(G::NonDiffed, x,
     end
  
     # solve least squares problem
-    γv = view(cache.γv, 1:m_eff)
+    γv = zeros(effective_memory) #view(γv, 1:m_eff)
     ldiv!(Rv, mul!(γv, Qv', vec(Fx)))
 
     # update next iterate
     for i in 1:effective_memory
-        @. x -= γv[i] * cache.G[i]
+        @. x -= γv[i] * G[i]
+    end
+    if !isa(beta, Nothing)
+        x .= x .- (1 .- beta).*(Fx .- Qv*Rv*γv) # this is suboptimal!
     end
 
-    if !isa(beta, Nothing)
-        x .= x .- (1 .- beta).*(Fx .- Qv*Rv*γv))) # this is suboptimal!
+    finite_check = all(isfinite.(x)) # non-allocating?
+    if norm(Fx) < f_abstol || !finite_check
+      return (x=x, Fx=Fx, acc_iter=0, finite=finite_check)
     end
   end
-end
-
-    if !isa(beta, Nothing)
-        x .= x .- (1 .- beta).*(fcur .- mul!(x_cache, Qv[m_eff], mul!(m_eff_cache[m_eff], Rv[m_eff], γ[m_eff])))
-    end
+  Gx, Gx, x
 end

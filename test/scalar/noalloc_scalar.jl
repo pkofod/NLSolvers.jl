@@ -1,6 +1,6 @@
 using NLSolvers, Test
 
-function fourth(∇²f, ∇f, x)
+function fourth(x, ∇f, ∇²f)
     if !(∇²f == nothing)
         ∇²f = 12x^2 - sin(x)
     end

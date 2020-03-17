@@ -1,8 +1,8 @@
 using NLSolvers, Test, DoubleFloats
-function myfun(∇f, x)
-    myfun(nothing, ∇f, x)
+function myfun(x, ∇f)
+    myfun(x, ∇f, nothing)
 end
-function myfun(∇²f, ∇f, x::T) where T<:Real
+function myfun(x::T, ∇f, ∇²f) where T<:Real
     if !(∇²f == nothing)
         ∇²f = T(12*x^2 - sin(x))
     end

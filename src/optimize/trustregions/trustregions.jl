@@ -13,10 +13,11 @@ end
 
 Basic trust region updater following, and named after [CGT].
 """
-struct BTR
+struct BTR{T}
+  Δmin::T
 end
-TrustRegion() = TrustRegion(Newton(), NTR(), BTR())
-TrustRegion(m, sp) = TrustRegion(m, sp, BTR())
+TrustRegion(; deltamin=nothing) = TrustRegion(Newton(), NTR(), BTR(deltamin))
+TrustRegion(m, sp=NTR(); deltamin=nothing) = TrustRegion(m, sp, BTR(deltamin))
 modelscheme(tr::TrustRegion) = tr.scheme
 algorithm(tr::TrustRegion) = tr.spsolve
 

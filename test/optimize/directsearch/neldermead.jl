@@ -1,5 +1,5 @@
 using NLSolvers
-function f∇f!(∇f, x)
+function f∇f!(x, ∇f)
    if !(∇f==nothing)
        if ( x[1]^2 + x[2]^2 == 0 )
            dtdx1 = 0;
@@ -36,15 +36,15 @@ solve!(nm_prob!, rand(3), NelderMead())
 
 minimize!(obj!, -rand(3)*9 .- 3, NLSolvers.NelderMead(), MinOptions())
 V = [[1.0,1.0,1.0], [0.0,1.0,1.0],[0.40,0.0,0.0],[-1.0,2.0,.03]]
-F = f∇f!.(nothing, V)
+F = obj!.(V)
 
 splx = NLSolvers.ValuedSimplex(V, F)
 
-minimize!(obj!, splx, NLSolvers.NelderMead())
+minimize!(obj!, splx, NLSolvers.NelderMead(), MinOptions())
 solve!(nm_prob!, splx)
 
 
-function powell(∇f, x)
+function powell(x, ∇f)
     fx = (x[1] + 10.0 * x[2])^2 + 5.0 * (x[3] - x[4])^2 +
         (x[2] - 2.0 * x[3])^4 + 10.0 * (x[1] - x[4])^4
 
@@ -58,25 +58,6 @@ function powell(∇f, x)
     return fx
 end
 
-
-function powell_optim(F, ∇f, x)
-    if !isa(F, Nothing)
-        fx = (x[1] + 10.0 * x[2])^2 + 5.0 * (x[3] - x[4])^2 +
-            (x[2] - 2.0 * x[3])^4 + 10.0 * (x[1] - x[4])^4
-    end
-    if !isa(∇f, Nothing)
-        ∇f[1] = 2.0 * (x[1] + 10.0 * x[2]) + 40.0 * (x[1] - x[4])^3
-        ∇f[2] = 20.0 * (x[1] + 10.0 * x[2]) + 4.0 * (x[2] - 2.0 * x[3])^3
-        ∇f[3] = 10.0 * (x[3] - x[4]) - 8.0 * (x[2] - 2.0 * x[3])^3
-        ∇f[4] = -10.0 * (x[3] - x[4]) - 40.0 * (x[1] - x[4])^3
-        if !isa(F, Nothing)
-            return fx
-        else
-            return Nothing
-        end
-    end
-    return fx
-end
 obj_powell = OnceDiffed(powell)
 # Define vertices in V
 x0 = [1.0,1.0,1.0,1.0]
@@ -87,18 +68,13 @@ end
 V
 F = obj_powell.(V)
 splx = NLSolvers.ValuedSimplex(V, F)
-@time minimize!(obj_powell, splx, NLSolvers.NelderMead(); itermax=3000)
-@time minimize!(obj_powell, copy(x0), NLSolvers.NelderMead(); itermax=3000)
-@allocated minimize!(obj_powell, splx, NLSolvers.NelderMead(); itermax=3000)
-@profiler minimize!(obj_powell, copy(x0), NLSolvers.NelderMead(); itermax=3000)
-
-using Optim
-res = optimize(Optim.only_fg!(powell_optim), copy(x0), NelderMead())
-res = optimize(Optim.only_fg!(powell_optim), copy(x0), Optim.GradientDescent())
-@time optimize(Optim.only_fg!(powell_optim), x0, NelderMead(), Optim.Options(g_abstol=0, iterations =3000))
+@time minimize!(obj_powell, splx, NLSolvers.NelderMead(), MinOptions(maxiter=3000))
+@time minimize!(obj_powell, copy(x0), NLSolvers.NelderMead(), MinOptions(maxiter=3000))
+@allocated minimize!(obj_powell, splx, NLSolvers.NelderMead(), MinOptions(maxiter=3000))
+minimize!(obj_powell, copy(x0), NLSolvers.NelderMead(), MinOptions(maxiter=3000))
 
 
-function extros!(storage, x::AbstractArray)
+function extros!(x, storage)
    n = length(x)
    jodd = 1:2:n-1
    jeven = 2:2:n
@@ -122,4 +98,4 @@ V
 extros_obj! = OnceDiffed(extros!)
 F = extros_obj!.(V)
 splx = NLSolvers.ValuedSimplex(V, F)
-@time minimize!(extros_obj!, splx, NLSolvers.NelderMead(); itermax=3000)
+@time minimize!(extros_obj!, splx, NLSolvers.NelderMead(), MinOptions(maxiter=3000))

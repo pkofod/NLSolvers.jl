@@ -35,6 +35,8 @@ function default_neighbor(x_best)
   return x_best .+ T.(RandomNumbers.randn(n))
 end
 
+minimize!(objective::ObjWrapper, x0, method::SimulatedAnnealing, options::MinOptions) =
+  minimize(objective::ObjWrapper, x0, method::SimulatedAnnealing, options::MinOptions)
 function minimize(objective::ObjWrapper, x0, method::SimulatedAnnealing, options::MinOptions)
   T = eltype(x0)
   t0 = time()
@@ -50,7 +52,7 @@ function minimize(objective::ObjWrapper, x0, method::SimulatedAnnealing, options
   while iter ≤ options.maxiter && !(is_converged)
     iter += 1
     # Determine the temperature for current iteration
-    t = method.temperature(iter)
+    temperature = method.temperature(iter)
 
     # Randomly generate a neighbor of our current state
     x_candidate = method.neighbor(x_best)
@@ -70,7 +72,7 @@ function minimize(objective::ObjWrapper, x0, method::SimulatedAnnealing, options
        end
     else
       # If proposal is inferior, we move to it with probability p
-      p = exp(-(f_candidate - f_now) / t)
+      p = exp(-(f_candidate - f_now) / temperature)
       if T(RandomNumbers.rand()) <= p
         x_now = copy(x_candidate)
         f_now = f_candidate
@@ -79,8 +81,7 @@ function minimize(objective::ObjWrapper, x0, method::SimulatedAnnealing, options
     is_converged = converged(method, f_now, options)
   end
 
-  # (f_best=f_best, x_best=x_best, f_now=f_now, x_now=x_now, temperature=temperature)
-  ConvergenceInfo(method, (minimizer=x_best, minimum=f_best, f_now=f_now, x_now=x_now,temperature=temperature, f0=f0, iter=iter, time=time()-t0), options)
+  ConvergenceInfo(method, (minimizer=x_best, minimum=f_best, f_now=f_now, x_now=x_now, temperature=temperature, f0=f0, iter=iter, time=time()-t0), options)
 end
 function converged(method::SimulatedAnnealing, fz, options)
   f_converged = false

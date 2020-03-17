@@ -1,4 +1,18 @@
-# This is implemented directly as in N&W, so we call it NWI.
+#=================================================================================
+  NWI (Nocedal Wright Iterative)) is a trust region sub-problem solver that sol-
+  ves the quadratic programming problem subject to the solution being in a
+  Euclidean Ball. It is appropriate for all types of Hessians. It solves the
+  problem by solving the secular equ  ation by a safeguarded Newton's method.
+  The secular equation is simply a the inverse of the difference between the
+  step length and the trust region radius.   It accepts either the Newton step
+  if this is interior and the Hessian is positive definite, steps to the boundary
+  (with some slack) in a clever way.
+
+  NTR accepts all Hessians and is therefore well-suited for Newton's method for
+  any vexity. It is expensive for very large problems, and uses the direct
+  eigensolution. This could potentially be useful for problems with simple 
+  structure of the eigenproblem, but we suspect NWI is superior in most cases.
+=================================================================================#
 
 struct NWI <: NearlyExactTRSP
 end

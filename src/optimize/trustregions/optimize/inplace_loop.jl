@@ -12,18 +12,18 @@ function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, opti
 
 
     Δk = T(20.0)
-    x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, accept = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δk, approach, objective, options)
+    x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, reject = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δk, approach, objective, options)
 
     iter = 1
-    # Check for gradient convergence
-    is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options, accept)
+    # Check for convergence
+    is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options, reject, Δkp1)
     while iter <= options.maxiter && !any(is_converged)
         iter += 1
-        x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, accept = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, approach, objective, options)
-        # Check for gradient convergence
-        is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options, accept)
+        x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, reject = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, approach, objective, options)
+        # Check for convergence
+        is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options, reject, Δkp1)
     end
-    return ConvergenceInfo(approach, (Δx=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
+    return ConvergenceInfo(approach, (Δ=Δkp1, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
 
 

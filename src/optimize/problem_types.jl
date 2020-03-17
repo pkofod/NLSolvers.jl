@@ -11,13 +11,18 @@ are bounds constraints and manifold constraints on the inputs.
 Options are stored in `options` and must be an appropriate options type. See more information
 about options using `?MinOptions`.
 """
-struct MinProblem{O, B, M, C} <: AbstractProblem
+struct MinProblem{O, B, M<:Manifold, C} <: AbstractProblem
     objective::O
     bounds::B
     manifold::M
     constraints::C
 end
-MinProblem(; obj=nothing, bounds=nothing, manifold=nothing, constraints=nothing) =
+_manifold(prob::MinProblem) = prob.manifold
+lowerbounds(mp::MinProblem) = mp.bounds[1]
+upperbounds(mp::MinProblem) = mp.bounds[2]
+value(p::MinProblem, args...) = p.objective(args...)
+constraints(p::MinProblem, args...) = p.constraints(args...)
+MinProblem(; obj=nothing, bounds=nothing, manifold=Euclidean(0), constraints=nothing) =
   MinProblem(obj, bounds, manifold, constraints)
 
 # These are conveniences that should be in optim
@@ -46,6 +51,9 @@ function Base.show(io::IO, ci::ConvergenceInfo)
   if haskey(info, :∇fz)
     println(io, "  Final gradient norm:      $(@sprintf("%.2e", opt.g_norm(info.∇fz)))")
   end
+  if haskey(info, :temperature)
+    println(io, "  Final temperature:        $(@sprintf("%.2e", ci.info.temperature))")
+  end
   println(io)
   println(io, "  Initial objective value:  $(@sprintf("%.2e", ci.info.f0))")
   if haskey(info, :∇f0)
@@ -54,24 +62,34 @@ function Base.show(io::IO, ci::ConvergenceInfo)
   println(io)
   println(io, "* Convergence measures")
   if isa(ci.solver, NelderMead)
-      nm_converged(r) = 0.0
-      println(io, "  √(Σ(yᵢ-ȳ)²)/n         = $(@sprintf("%.2e", info.nm_obj)) <= $(@sprintf("%.2e", opt.nm_tol)) ($(info.nm_obj<=opt.nm_tol))")
+    nm_converged(r) = 0.0
+    println(io, "  √(Σ(yᵢ-ȳ)²)/n         = $(@sprintf("%.2e", info.nm_obj)) <= $(@sprintf("%.2e", opt.nm_tol)) ($(info.nm_obj<=opt.nm_tol))")
+  elseif isa(ci.solver, SimulatedAnnealing)
   else
-      println(io, "  |x - x'|              = $(@sprintf("%.2e", info.ρs)) <= $(@sprintf("%.2e", opt.x_abstol)) ($(info.ρs<=opt.x_abstol))")
-      println(io, "  |x - x'|/|x|          = $(@sprintf("%.2e", info.ρs/info.ρx)) <= $(@sprintf("%.2e", opt.x_reltol)) ($(info.ρs/info.ρx <= opt.x_reltol))")
-      if isfinite(opt.f_limit)
-        println(io, "  |f(x')|               = $(@sprintf("%.2e", info.minimum)) <= $(@sprintf("%.2e", opt.f_limit)) ($(info.minimum<=opt.f_limit))")
+    println(io, "  |x - x'|              = $(@sprintf("%.2e", info.ρs)) <= $(@sprintf("%.2e", opt.x_abstol)) ($(info.ρs<=opt.x_abstol))")
+    println(io, "  |x - x'|/|x|          = $(@sprintf("%.2e", info.ρs/info.ρx)) <= $(@sprintf("%.2e", opt.x_reltol)) ($(info.ρs/info.ρx <= opt.x_reltol))")
+    if isfinite(opt.f_limit)
+      println(io, "  |f(x')|               = $(@sprintf("%.2e", info.minimum)) <= $(@sprintf("%.2e", opt.f_limit)) ($(info.minimum<=opt.f_limit))")
+    end
+    if haskey(info, :fx)
+      Δf = abs(info.fx-info.minimum)
+      println(io, "  |f(x) - f(x')|        = $(@sprintf("%.2e", Δf)) <= $(@sprintf("%.2e", opt.f_abstol)) ($(Δf<=opt.f_abstol))")
+      println(io, "  |f(x) - f(x')|/|f(x)| = $(@sprintf("%.2e", Δf/abs(info.fx))) <= $(@sprintf("%.2e", opt.f_reltol)) ($(Δf/abs(info.fx)<=opt.f_reltol))")
+    end
+    if haskey(info, :∇fz)
+      ρ∇f = opt.g_norm(info.∇fz)
+      println(io, "  |g(x)|                = $(@sprintf("%.2e", ρ∇f)) <= $(@sprintf("%.2e", opt.g_abstol)) ($(ρ∇f<=opt.g_abstol))")
+      println(io, "  |g(x)|/|g(x₀)|        = $(@sprintf("%.2e", ρ∇f/info.∇f0)) <= $(@sprintf("%.2e", opt.g_reltol)) ($(ρ∇f/info.∇f0<=opt.g_reltol))")
+    end
+    if haskey(info, :Δ)
+      Δmin = ci.solver.Δupdate.Δmin isa Nothing ? 0 : ci.solver.Δupdate.Δmin
+      if isnan(info.Δ)
+        println(io, "  Δ                     = $(@sprintf("%.2e", info.Δ)) (updated radius was not finite)")
+      else
+        Δtest = info.Δ<=Δmin
+        println(io, "  Δ                     = $(@sprintf("%.2e", info.Δ)) <= $(@sprintf("%.2e", Δmin)) ($Δtest)")
       end
-      if haskey(info, :fx)
-        Δf = abs(info.fx-info.minimum)
-        println(io, "  |f(x) - f(x')|        = $(@sprintf("%.2e", Δf)) <= $(@sprintf("%.2e", opt.f_abstol)) ($(Δf<=opt.f_abstol))")
-        println(io, "  |f(x) - f(x')|/|f(x)| = $(@sprintf("%.2e", Δf/abs(info.fx))) <= $(@sprintf("%.2e", opt.f_reltol)) ($(Δf/abs(info.fx)<=opt.f_reltol))")
-      end
-      if haskey(info, :∇fz)
-        ρ∇f = opt.g_norm(info.∇fz)
-        println(io, "  |g(x)|                = $(@sprintf("%.2e", ρ∇f)) <= $(@sprintf("%.2e", opt.g_abstol)) ($(ρ∇f<=opt.g_abstol))")
-        println(io, "  |g(x)|/|g(x₀)|        = $(@sprintf("%.2e", ρ∇f/info.∇f0)) <= $(@sprintf("%.2e", opt.g_reltol)) ($(ρ∇f/info.∇f0<=opt.g_reltol))")
-      end
+    end
   end
   println(io)
   println(io, "* Work counters")
@@ -133,15 +151,7 @@ function Base.show(io::IO, mr::MinResults)
   println(io, " * Convergence measures\n")
   show(io, convinfo(mr))
 end
-
 #=
-* Convergence measures
-  |x - x'|               = 3.47e-07 ≰ 0.0e+00
-  |x - x'|/|x'|          = 3.47e-07 ≰ 0.0e+00
-  |f(x) - f(x')|         = 6.59e-14 ≰ 0.0e+00
-  |f(x) - f(x')|/|f(x')| = 1.20e+03 ≰ 0.0e+00
-  |g(x)|                 = 2.33e-09 ≤ 1.0e-08
-
 * Work counters
   Seconds run:   0  (vs limit Inf)
   Iterations:    16
@@ -199,11 +209,16 @@ function f_converged(fx, fz, options)
   f_converged = f_converged || isnan(fz)
   return f_converged
 end
-function converged(approach, x, z, ∇fz, ∇f0, fx, fz, options, skip=nothing)
-  if approach isa TrustRegion && skip == true
-    # special logic for region reduction here
-    false
-  else
-    x_converged(x, z, options), g_converged(∇fz, ∇f0, options), f_converged(fx, fz, options)
+function converged(approach, x, z, ∇fz, ∇f0, fx, fz, options, skip=nothing, Δkp1=nothing)
+  xcon, gcon, fcon = x_converged(x, z, options), g_converged(∇fz, ∇f0, options), f_converged(fx, fz, options)
+  if approach isa TrustRegion
+    Δcon = isnan(Δkp1)
+    Δcon = Δcon || (!(approach.Δupdate.Δmin isa Nothing) && Δkp1 < approach.Δupdate.Δmin)
+    if skip == true
+      # special logic for region reduction here
+      return false, false, false, Δcon
+    end
+    return xcon, gcon, fcon, Δcon 
   end
+  return xcon, gcon, fcon
 end

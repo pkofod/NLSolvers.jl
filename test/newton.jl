@@ -1,6 +1,6 @@
 using NLSolvers, StaticArrays, Test
 
-function himmelblau(∇f, x)
+function himmelblau(x, ∇f)
     if !(∇f == nothing)
         ∇f1 = 4.0 * x[1]^3 + 4.0 * x[1] * x[2] -
         44.0 * x[1] + 2.0 * x[1] + 2.0 * x[2]^2 - 14.0
@@ -13,7 +13,7 @@ function himmelblau(∇f, x)
     objective_return(fx, ∇f)
 end
 
-function himmelblau!(∇f, x)
+function himmelblau!(x, ∇f)
     if !(∇f == nothing)
         ∇f[1] = 4.0 * x[1]^3 + 4.0 * x[1] * x[2] -
         44.0 * x[1] + 2.0 * x[1] + 2.0 * x[2]^2 - 14.0
@@ -25,7 +25,7 @@ function himmelblau!(∇f, x)
     return ∇f == nothing ? fx : (fx, ∇f)
 end
 
-function himmelblau!(∇²f, ∇f, x)
+function himmelblau!(x, ∇f, ∇²f)
     if !(∇²f == nothing)
         ∇²f[1, 1] = 12.0 * x[1]^2 + 4.0 * x[2] - 42.0
         ∇²f[1, 2] = 4.0 * x[1] + 4.0 * x[2]
@@ -35,19 +35,19 @@ function himmelblau!(∇²f, ∇f, x)
 
 
     if ∇f == nothing && ∇²f == nothing
-        fx = himmelblau!(∇f, x)
+        fx = himmelblau!(x, ∇f)
         return fx
     elseif ∇²f == nothing
-        return himmelblau!(∇f, x)
+        return himmelblau!(x, ∇f)
     else
-        fx, ∇f = himmelblau!(∇f, x)
+        fx, ∇f = himmelblau!(x, ∇f)
         return fx, ∇f, ∇²f
     end
 end
-himmelblau_nonmut(∇f, x) = himmelblau!(∇f, x)
-himmelblau_nonmut(∇²f, ∇f, x) = himmelblau!(∇²f, ∇f, x)
+himmelblau_nonmut(x, ∇f) = himmelblau!(x, ∇f)
+himmelblau_nonmut(x, ∇f, ∇²f) = himmelblau!(x, ∇f, ∇²f)
 @testset "Newton" begin
-    function himmelblau_twicediff(∇²f, ∇f, x)
+    function himmelblau_twicediff(x, ∇f, ∇²f)
         if !(∇²f == nothing)
             ∇²f11 = 12.0 * x[1]^2 + 4.0 * x[2] - 42.0
             ∇²f12 = 4.0 * x[1] + 4.0 * x[2]
@@ -80,7 +80,16 @@ himmelblau_nonmut(∇²f, ∇f, x) = himmelblau!(∇²f, ∇f, x)
     @test norm(res.info.∇fz, Inf) < 1e-8
     res = minimize(TwiceDiffed(himmelblau_nonmut), (copy([2.0,2.0]), [0.0 0.0;0.0 0.0]), LineSearch(Newton()), MinOptions())
     @test norm(res.info.∇fz, Inf) < 1e-8
-
+    @testset "Newton linsolve" begin
+        res_qr = minimize!(TwiceDiffed(himmelblau_nonmut), (copy([2.0,2.0]), [0.0 0.0;0.0 0.0]), LineSearch(Newton(; linsolve=(d, B, g)->ldiv!(d, qr(B), g))), MinOptions())
+        @test norm(res_qr.info.∇fz, Inf) < 1e-8
+        res_qr = minimize(TwiceDiffed(himmelblau_nonmut), (copy([2.0,2.0]), [0.0 0.0;0.0 0.0]), LineSearch(Newton(; linsolve=(B, g)->qr(B)\g)), MinOptions())
+        @test norm(res_qr.info.∇fz, Inf) < 1e-8
+        res_lu = minimize!(TwiceDiffed(himmelblau_nonmut), (copy([2.0,2.0]), [0.0 0.0;0.0 0.0]), LineSearch(Newton(; linsolve=(d, B, g)->ldiv!(d, lu(B), g))), MinOptions())
+        @test norm(res_lu.info.∇fz, Inf) < 1e-8
+        res_lu = minimize(TwiceDiffed(himmelblau_nonmut), (copy([2.0,2.0]), [0.0 0.0;0.0 0.0]), LineSearch(Newton(; linsolve=(B, g)->lu(B)\g)), MinOptions())
+        @test norm(res_lu.info.∇fz, Inf) < 1e-8
+    end
     @testset "newton static" begin
         sl = @SVector([0.0,0.0])
         state0 = (@SVector([2.0,2.0]), I+sl*sl')

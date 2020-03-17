@@ -1,5 +1,5 @@
 using GeometryTypes, Test
-function f(G, x)
+function f(x, G)
     fx = (1.0 - x[1])^2 + 100.0 * (x[2] - x[1]^2)^2
 
     if !(G == nothing)

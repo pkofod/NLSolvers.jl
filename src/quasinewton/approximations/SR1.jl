@@ -9,7 +9,7 @@ hasprecon(::SR1) = NoPrecon()
 
 summary(::SR1) = "SR1"
 function update(scheme::SR1{<:Inverse}, H, s, y)
-   T = eltype(s)
+   T = real(eltype(s))
    w = s - H*y
    θ = dot(w, y) # angle between residual and change in gradient
    ρy = norm(y)
@@ -19,7 +19,7 @@ function update(scheme::SR1{<:Inverse}, H, s, y)
    H
 end
 function update(scheme::SR1{<:Direct}, B, s, y)
-   T = eltype(s)
+   T = real(eltype(s))
    res = y - B*s # resesidual in secant equation
    θ = dot(res, s) # angle between residual and change in state
    if abs(θ) ≥ T(1e-12)*norm(res)*norm(s)
@@ -30,7 +30,7 @@ function update(scheme::SR1{<:Direct}, B, s, y)
    B
 end
 function update!(scheme::SR1{<:Inverse}, H, s, y)
-   T = eltype(s)
+   T = real(eltype(s))
    w = s - H*y
    θ = dot(w, y) # angle between residual and change in gradient
    ρy = norm(y)
@@ -40,10 +40,10 @@ function update!(scheme::SR1{<:Inverse}, H, s, y)
    H
 end
 function update!(scheme::SR1{<:Direct}, B, s, y)
-   T = eltype(s)
+   T = real(eltype(s))
    res = y - B*s
    θ = dot(res, s) # angle between residual and change in state
-   if abs(θ) ≥ T(1e-12)*norm(res)*norm(s)
+   if abs(θ) ≥ T(1e-12)*norm(res, 2)*norm(s, 2)
       if true #abs(θ) ≥ 1e-12
          B .= B .+ (res*res')/θ
       end

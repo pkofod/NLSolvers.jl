@@ -21,14 +21,16 @@ import Base: show, summary
   the estimate on lambda
  ============================ LinearAlgebra ===========================#
 
-using LinearAlgebra: dot, I, norm, # used everywhere in updates, convergence, etc
-                     mul!, rmul!, ldiv!, # quasi-newton updates, apply factorizations, etc
-                     cholesky, factorize, issuccess, # very useful in trust region solvers
-                     UniformScaling, Diagonal, # simple matrices
-                     Symmetric, Hermitian, # wrap before factorizations or eigensystems to avoid checks
-                     diag, # mostly for trust region diagonal manipulation
-                     eigen, # for the direct subproblem solver
-                     opnorm # for NWI safe guards
+using LinearAlgebra:  dot, I, norm, # used everywhere in updates, convergence, etc
+                      mul!, rmul!, ldiv!, # quasi-newton updates, apply factorizations, etc
+                      cholesky, factorize, issuccess, # very useful in trust region solvers
+                      UniformScaling, Diagonal, # simple matrices
+                      Symmetric, Hermitian, # wrap before factorizations or eigensystems to avoid checks
+                      diag, # mostly for trust region diagonal manipulation
+                      eigen, # for the direct subproblem solver
+                      opnorm, # for NWI safe guards
+                      checksquare, UpperTriangular, givens, lmul!, cond, # For QR update
+                      axpy! # for Anderson
 
 # For better random number generators and rand!
 using RandomNumbers
@@ -44,7 +46,7 @@ export solve, solve!
 function objective_return(f, g, H=nothing)
   if g isa Nothing && H isa Nothing
     return f
-elseif !(g isa Nothing) && H isa Nothing
+  elseif !(g isa Nothing) && H isa Nothing
     return f, g
   elseif !(g isa Nothing) && !(H isa Nothing)
     return f, g, H
@@ -54,6 +56,10 @@ export objective_return
 
 using StaticArrays
 abstract type MutateStyle end
+
+abstract type AbstractProblem end
+abstract type AbstractOptions end
+
 struct InPlace <: MutateStyle end
 struct OutOfPlace <:MutateStyle end
 include("precondition.jl")
@@ -70,9 +76,6 @@ abstract type HessianApproximation end
 struct Inverse <: HessianApproximation end
 struct Direct <: HessianApproximation end
 export Inverse, Direct
-
-abstract type AbstractProblem end
-abstract type AbstractOptions end
 # problem and options types
 include("optimize/problem_types.jl")
 export MinProblem, MinOptions
@@ -96,7 +99,7 @@ export DBFGS, BFGS, SR1, DFP, GradientDescent, Newton, BB, LBFGS
 # Include the actual functions that expose the functionality in this package.
 include("optimize/linesearch/linesearch.jl")
 include("optimize/randomsearch/randomsearch.jl")
-export SimulatedAnnealing
+export SimulatedAnnealing, PureRandomSearch, APSO
 include("optimize/directsearch/directsearch.jl")
 export NelderMead
 
@@ -110,6 +113,9 @@ export nlsolve, nlsolve!, NEqProblem
 export ResidualKrylov, ResidualKrylovProblem
 # Forcing Terms
 export FixedForceTerm, DemboSteihaug, EisenstatWalkerA, EisenstatWalkerB
+
+include("fixedpoints/root.jl")
+export Anderson
 
 function negate!(A::AbstractArray)
   @inbounds for i in eachindex(A)
