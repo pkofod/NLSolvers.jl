@@ -102,6 +102,8 @@ include("optimize/randomsearch/randomsearch.jl")
 export SimulatedAnnealing, PureRandomSearch, APSO
 include("optimize/directsearch/directsearch.jl")
 export NelderMead
+include("optimize/acceleration/root.jl")
+export Adam, AdaMax
 
 include("optimize/trustregions/trustregions.jl")
 export minimize, minimize!, OptProblem, LineSearch, TrustRegion
@@ -116,6 +118,7 @@ export FixedForceTerm, DemboSteihaug, EisenstatWalkerA, EisenstatWalkerB
 
 include("fixedpoints/root.jl")
 export Anderson
+
 
 function negate!(A::AbstractArray)
   @inbounds for i in eachindex(A)
