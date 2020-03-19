@@ -1,3 +1,9 @@
+#===============================================================================
+  Preconditioning
+
+  Todo: maybe add an inverse?
+===============================================================================#
+
 struct NoPrecon end
 struct HasPrecon end
 function initial_preconditioner(method, x, ::NoPrecon)
@@ -8,8 +14,10 @@ function initial_preconditioner(method, x, ::HasPrecon)
 end
 update_preconditioner(method, x, P) = update_preconditioner(method, x, P, hasprecon(method))
 update_preconditioner(method, x, P, ::NoPrecon) = nothing
+update_preconditioner(method, x, P::Nothing, ::HasPrecon) = method.P(x)
 update_preconditioner(method, x, P, ::HasPrecon) = method.P(x, P)
-precondition(d, ::Nothing, ∇f) = copyto!(d, ∇f)
-precondition(d, P, ∇f) = ldiv!(d, P, ∇f)
-precondition(::Nothing, ∇f) = ∇f
-precondition(P, ∇f) = P\∇f
+apply_preconditioner(mstyle::InPlace, ::Nothing, Pg, ∇f) = copyto!(Pg, ∇f)
+apply_preconditioner(mstyle::InPlace, P, Pg, ∇f) = mul!(Pg, P, ∇f)
+apply_preconditioner(mstyle::OutOfPlace, ::Nothing, Pg, ∇f) = ∇f
+apply_preconditioner(mstyle::OutOfPlace, P, pg, ∇f) = P*∇f
+

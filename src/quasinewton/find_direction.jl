@@ -19,9 +19,9 @@ function find_direction!(d, A, P, ∇f, scheme::QuasiNewton{<:Inverse})
    d
 end
 function find_direction(B, P, ∇f, scheme::GradientDescent)
-   -precondition(P, ∇f)
+   -apply_preconditioner(OutOfPlace(), P, nothing, ∇f)
 end
 function find_direction!(d, B, P,∇f, scheme::GradientDescent)
-   d = precondition(d, P, ∇f)
+   d = apply_preconditioner(InPlace(), P, d, ∇f)
    d .= .-d
 end

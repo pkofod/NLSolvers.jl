@@ -34,7 +34,6 @@ function find_direction!(scheme::LBFGS{<:Inverse, <:TwoLoop}, q,
     end
 
     # Copy scaled or preconditioned q into s for forward pass
-    # Actually, could we do scaling each iteration? Like in BFGS
     if memory > 0
       if scaling isa InitialScaling{<:ShannoPhua} # we need a pair to scale
           k = scaling(S[memory], Y[memory])

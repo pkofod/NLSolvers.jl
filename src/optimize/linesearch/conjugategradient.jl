@@ -1,5 +1,16 @@
-# Might consider Daniel 1967 that uses second order
-# add preconditioner
+#===============================================================================
+  Conjugate Gradient Descent
+
+  We implement a generic conjugate gradient descent method that includes many
+  different β-choices, preconditioning, precise line searches, and more.
+
+  A conjugate gradient method here will have to implement a CGUpdate type (CD,
+  HZ, HS, ...) that controls the β update.
+
+  Todos:
+  Might consider Daniel 1967 that uses second order
+===============================================================================#
+
 abstract type CGUpdate end
 struct ConjugateGradient{Tu, TP}
   update::Tu
@@ -17,29 +28,39 @@ struct CGVars{T1, T2, T3}
     ls_success::Bool
 end
 
-function prepare_variables(objective, approach::LineSearch{<:ConjugateGradient, <:Any}, x0, ∇fz)
+function prepare_variables(objective, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, x0, ∇fz)
     z = x0
     x = copy(z)
 
-    # first evaluation
     fz, ∇fz = objective(x, ∇fz)
 
     fx = copy(fz)
     ∇fx = copy(∇fz)
-    return x, fx, ∇fx, z, fz, ∇fz
+
+    Pg = approach.scheme.P isa Nothing ? ∇fz : copy(∇fz)
+    return x, fx, ∇fx, z, fz, ∇fz, Pg
 end
 
 summary(::ConjugateGradient) = "Conjugate Gradient Descent"
-#### Conjugate Descent [Fletcher] (CD)
+#===============================================================================
+  Conjugate Descent [Fletcher] (CD)
+===============================================================================#
 struct CD <: CGUpdate end
-_β(::CD, d, ∇fz, ∇fx, y, P) = -norm(∇fz)^2/dot(d, ∇fx)
+function _β(mstyle, cg::CD, d, ∇fz, ∇fx, y, P, Pg)
+  num = -dot(∇fz, Pg)
+  P∇fx = apply_preconditioner(mstyle, Pg, P, ∇fx)
+  den = dot(d, P∇fx)
+  num/den
+end
 
-#### Hager-Zhang (HZ)
+#===============================================================================
+  Hager-Zhang (HZ)
+===============================================================================#
 struct HZ{Tη} <: CGUpdate
     η::Tη # a "forcing term"
 end
 HZ() = HZ(1/100)
-function _β(cg::HZ, d, ∇fz, ∇fx, y, P)
+function _β(mstyle, cg::HZ, d, ∇fz, ∇fx, y, P, Pg)
     T = eltype(∇fz)
 
     ddy = dot(d, y)
@@ -50,35 +71,71 @@ function _β(cg::HZ, d, ∇fz, ∇fx, y, P)
     βkp1 = max(βN, ηk)
 end
 
-#### Hestenes-Stiefel (HS)
+#===============================================================================
+  Hestenes-Stiefel (HS)
+===============================================================================#
 struct HS <: CGUpdate end
-_β(::HS, d, ∇fz, ∇fx, y, P) = dot(∇fz, y)/dot(d, y)
-
-#### Fletcher-Reeves (FR)
+function _β(mstyle, cg::HS, d, ∇fz, ∇fx, y, P, P∇fz)
+  num = dot(P∇fz, y)
+  Py = apply_preconditioner(mstyle, P∇fz, P, y)
+  num/dot(d, Py)
+end
+#===============================================================================
+  Fletcher-Reeves (FR)
+===============================================================================#
 struct FR <: CGUpdate end
-_β(::FR, d, ∇fz, ∇fx, y, P) = norm(∇fz)^2/norm(∇fx)^2
-
-#### Polak-Ribiére-Polyak (PRP)
+function _β(mstyle, cg::FR, d, ∇fz, ∇fx, y, P, P∇fz)
+    num = dot(∇fz, P∇fz)
+    P∇fx = apply_preconditioner(mstyle, P∇fz, P, ∇fx)
+    num/dot(∇fx, P∇fx)
+end
+#===============================================================================
+  Polak-Ribiére-Polyak (PRP)
+===============================================================================#
 struct PRP{Plus} end
 PRP(;plus=true) = PRP{plus}()
-_β(::PRP, d, ∇fz, ∇fx, y, P) = dot(∇fz, y)/norm(∇fx)^2
-function _β(::PRP{true}, d, ∇fz, ∇fx, y, P)
-  β = dot(∇fz, y)/norm(∇fx)^2
+function _β(mstyle, ::PRP, d, ∇fz, ∇fx, y, P, P∇fz)
+    num = dot(y, P∇fz)
+    P∇fx = apply_preconditioner(mstyle, P∇fz, P, ∇fx)
+    num/dot(∇fx, P∇fx)
+end
+function _β(::PRP{true}, d, ∇fz, ∇fx, y, P, P∇fz)
+  β = _β(RP{false}(), d, ∇fz, ∇fx, y, P, P∇fz)
   max(typeof(β)(0), β)
 end
 
-#### Liu-Storey (LS)
+#===============================================================================
+  Liu-Storey (LS)
+===============================================================================#
 struct LS <: CGUpdate end
-_β(::LS, d, ∇fz, ∇fx, y, P) = dot(∇fz, y)/dot(d, ∇fx)
-
-#### Dai-Yuan (DY)
+function _β(mstyle, ::LS, d, ∇fz, ∇fx, y, P, P∇fz)
+  num = dot(y, P∇fz)
+  P∇fx = apply_preconditioner(mstyle, P∇fz, P, ∇fx)
+  num/dot(d, P∇fx)
+end
+#===============================================================================
+  Dai-Yuan (DY)
+===============================================================================#
 struct DY <: CGUpdate end
-_β(::DY, d, ∇fz, ∇fx, y, P) = norm(∇fz)^2/dot(d, y)
+function _β(mstyle, cg::DY, d, ∇fz, ∇fx, y, P, P∇fz)
+  num = dot(∇fz, P∇fz)
+  Py = apply_preconditioner(mstyle, P∇fz, P, y)
+  num/dot(d, Py)
+end
 
-#### Wei-Yao-Liu (VPRP)
+#===============================================================================
+  Wei-Yao-Liu (VPRP)
+===============================================================================#
 struct VPRP <: CGUpdate end
-_β(::VPRP, d, ∇fz, ∇fx, y, P) = (norm(∇fz)^2-norm(∇fz)/norm(∇fx)*dot(∇fz, ∇fx))/dot(d, y)
-
+function _β(mstyle, cg::VPRP, d, ∇fz, ∇fx, y, P, P∇fz)
+  a = dot(∇fz, P∇fz)
+  b = dot(∇fx, P∇fz)
+  P∇fx = apply_preconditioner(mstyle, P∇fz, P, ∇fx)
+  c = sqrt(dot(∇fx, P∇fx))
+  num1 = a - sqrt(a)/c*b
+  Py = apply_preconditioner(mstyle, P∇fz, P, y)
+  num/dot(d, Py)
+end
 
 # using an "initial vectors" function we can initialize s if necessary or nothing if not to save on vectors
 minimize!(obj::ObjWrapper, x0, cg::ConjugateGradient, options::MinOptions) =
@@ -99,25 +156,23 @@ function _minimize(prob::MinProblem, x0, approach::LineSearch{<:ConjugateGradien
     ==============#
     Tx = eltype(x0)
 
-    x, fx, ∇fx, z, fz, ∇fz = prepare_variables(obj, approach, x0, copy(x0))
+    x, fx, ∇fx, z, fz, ∇fz, Pg = prepare_variables(obj, approach, x0, copy(x0))
     f0, ∇f0 = fx, norm(∇fx)
-
-    P = initial_preconditioner(approach, x0)
 
     y, d, α, β = copy(∇fz), -copy(∇fx), Tx(0), Tx(0)
     cgvars = CGVars(y, d, α, β, true)
 
     k = 1
-    x, fx, ∇fx, z, fz, ∇fz, P, cgvars = iterate(mstyle, cgvars, x, fx, ∇fx, z, fz, ∇fz, P, approach, prob, obj, options)
+    x, fx, ∇fx, z, fz, ∇fz, P, cgvars = iterate(mstyle, cgvars, x, fx, ∇fx, z, fz, ∇fz, Pg, approach, prob, obj, options)
     is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)
     while k ≤ options.maxiter && !any(is_converged)
         k += 1
-        x, fx, ∇fx, z, fz, ∇fz, P, cgvars = iterate(mstyle, cgvars, x, fx, ∇fx, z, fz, ∇fz, P, approach, prob, obj, options, false)
+        x, fx, ∇fx, z, fz, ∇fz, P, cgvars = iterate(mstyle, cgvars, x, fx, ∇fx, z, fz, ∇fz, Pg, approach, prob, obj, options, P, false)
         is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options) 
     end
     return ConvergenceInfo(approach, (beta=β, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fx=∇fx, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=k, time=time()-t0), options)
 end
-function iterate(mstyle::InPlace, cgvars::CGVars, x, fx, ∇fx, z, fz, ∇fz, P, approach::LineSearch{<:ConjugateGradient, <:Any}, prob, obj::ObjWrapper, options::MinOptions, is_first=nothing)
+function iterate(mstyle::InPlace, cgvars::CGVars, x, fx, ∇fx, z, fz, ∇fz, Pg, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, prob::MinProblem, obj::ObjWrapper, options::MinOptions, P=nothing, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     Tx = eltype(x)
     scheme, linesearch = modelscheme(approach), algorithm(approach)
@@ -130,8 +185,9 @@ function iterate(mstyle::InPlace, cgvars::CGVars, x, fx, ∇fx, z, fz, ∇fz, P,
 
     # Update preconditioner
     P = update_preconditioner(approach, x, P)
+    P∇fz = apply_preconditioner(mstyle, P, Pg,  ∇fz)
     # Update current gradient and calculate the search direction
-    @. d = -∇fx + β*d
+    @. d = -P∇fz + β*d
 
     α_0 = initial(scheme.update, a-> obj(x.+a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
     φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
@@ -143,12 +199,12 @@ function iterate(mstyle::InPlace, cgvars::CGVars, x, fx, ∇fx, z, fz, ∇fz, P,
     @. z = x + α*d
     fz, ∇fz = obj(z, ∇fz)
     @. y = ∇fz - ∇fx
-    β = _β(scheme.update, d, ∇fz, ∇fx, y, P)
+    β = _β(mstyle, scheme.update, d, ∇fz, ∇fx, y, P, P∇fz)
 
     return x, fx, ∇fx, z, fz, ∇fz, P, CGVars(y, d, α, β, ls_success)
 end
 
-function iterate(mstyle::OutOfPlace, cgvars::CGVars, x, fx, ∇fx, z, fz, ∇fz, P, approach::LineSearch{<:ConjugateGradient, <:Any}, prob, obj::ObjWrapper, options::MinOptions, is_first=nothing)
+function iterate(mstyle::OutOfPlace, cgvars::CGVars, x, fx, ∇fx, z, fz, ∇fz, Pg, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, prob::MinProblem, obj::ObjWrapper, options::MinOptions, P=nothing, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     Tx = eltype(x)
     scheme, linesearch = modelscheme(approach), algorithm(approach)
@@ -161,9 +217,11 @@ function iterate(mstyle::OutOfPlace, cgvars::CGVars, x, fx, ∇fx, z, fz, ∇fz,
 
     # Update preconditioner
     P = update_preconditioner(approach, x, P)
-    d = @. -∇fx + β*d
+    P∇fz = apply_preconditioner(mstyle, P, Pg, ∇fz)
+    # Update current gradient and calculate the search direction
+    d = @. -P∇fz + β*d
 
-    α_0 = initial(scheme.update, a-> obj(x.+a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
+    α_0 = initial(scheme.update, a-> obj(x .+ a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
     φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # Perform line search along d
@@ -172,7 +230,7 @@ function iterate(mstyle::OutOfPlace, cgvars::CGVars, x, fx, ∇fx, z, fz, ∇fz,
     z = @. x + α*d
     fz, ∇fz = obj(z, ∇fz)
     y = @. ∇fz - ∇fx
-    β = _β(scheme.update, d, ∇fz, ∇fx, y, P)
+    β = _β(mstyle, scheme.update, d, ∇fz, ∇fx, y, P, P∇fz)
 
     return x, fx, ∇fx, z, fz, ∇fz, P, CGVars(y, d, α, β, ls_success)
 end

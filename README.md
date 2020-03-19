@@ -7,6 +7,8 @@
 NLSolvers provides optimization, curve fitting, and equation solving functionalities for Julia.
 The goal is to provide a set of robust and flexible methods that runs fast and is easy to use.
 
+# CLEAN UP PRECON AND REMOVE S, USE PRECON to set INITIAL H, and use NoPrecon-ish type of define dot(x, P, y) for non-Base P type
+
 
 Two types of functions:
 WorkVars # x, F, J, H, ??
@@ -21,7 +23,6 @@ Initial modelvars and QNvars
 initial convergence checks
 tracing!
 Abstract arrays!!! :|
-preconditioning
 manifolds
 Use user norms
 allow linsolve! especially nleq
@@ -273,9 +274,10 @@ res = minimize!(himmelblau!, copy([2.0,2.0]), (Newton(Direct()), NWI()))
 ## Custom solve
 
 ## Preconditioning
-GradientDescent, ConjugateGradient and LBFGS accept preconditioners. A preconditioner is provided as a function that has two methods: `p(x)` and `p(x, P)` where the first prepares and returns the preconditioner
-and the second is the signature for updating the preconditioner. If the preconditioner is constant, both method
-will simply return this preconditioner. A preconditioner is used in two contexts: in `A_ldiv_B!(pgr, P, gr)` that accepts a cache array for the preconditioned gradient `pgr`, the preconditioner `P`, and the gradient to be preconditioned `gr`, and in `dot(x, P, y)` that applies the dot product induced by `P`. For the out-of-place methods (`minimize` as opposed to `minimize!`) it is sufficient to have `\(P, gr)` and `dot(x, P, y)` defined.
+Many methods accept preconditioners. A preconditioner is provided as a function that has two methods: `p(x)` and `p(x, P)` where the first prepares and returns the preconditioner and the second is the signature for updating the preconditioner. If the preconditioner is constant, both method
+will simply return this preconditioner. A preconditioner is used in two contexts: in `ldiv!(pgr, P, gr)` that accepts a cache array for the preconditioned gradient `pgr`, the preconditioner `P`, and the gradient to be preconditioned `gr`, and in `dot(x, P, y)` that applies the dot product induced by `P`. For the out-of-place methods (`minimize` as opposed to `minimize!`) it is sufficient to have `\(P, gr)` and `dot(x, P, y)` defined.
+
+In Quasi-Newton methods, preconditioners are generally only called once, with the exception of LBFGS that will call the `p(x, P)` as well. Conjugate gradient descent (`ConjugateGradient`) will call the `p(x, P)` form in every iteration. For methods such as BFGS, SR1, and others, the preconditioner is simply understood to be the initial hessian approximation.
 
 ## Wrapping a LeastSquares problem for MinProblems
 To be able to do inplace least squares problems it is necessary to provide proper cache arrays to be used internally. To do this we write

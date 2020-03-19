@@ -6,11 +6,14 @@
 # The direct update can be written as
 #  B = B = yy'/y's-Bss'B'/s'B*s
 
-struct BFGS{T1} <: QuasiNewton{T1}
+struct BFGS{T1, T2} <: QuasiNewton{T1}
    approx::T1
+   P::T2
 end
-BFGS(;inverse=true) = BFGS(inverse ? Inverse() : Direct())
-hasprecon(::BFGS) = NoPrecon()
+BFGS(;inverse=true) = BFGS(inverse ? Inverse() : Direct(), nothing)
+BFGS(approx) = BFGS(approx, nothing)
+hasprecon(::BFGS{<:Any, <:Nothing}) = NoPrecon()
+hasprecon(::BFGS{<:Any, <:Any}) = HasPrecon()
 
 summary(bfgs::BFGS{Inverse}) = "Inverse BFGS"
 summary(bfgs::BFGS{Direct}) = "Direct BFGS"

@@ -31,6 +31,7 @@ using LinearAlgebra:  dot, I, norm, # used everywhere in updates, convergence, e
                       opnorm, # for NWI safe guards
                       checksquare, UpperTriangular, givens, lmul!, cond, # For QR update
                       axpy! # for Anderson
+import LinearAlgebra: mul!, dot # need to extend for preconditioners
 
 # For better random number generators and rand!
 using RandomNumbers

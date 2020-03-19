@@ -1,14 +1,16 @@
-struct DBFGS{T1, T2} <: QuasiNewton{T1}
+struct DBFGS{T1, T2, T3} <: QuasiNewton{T1}
    approx::T1
    theta::T2
+   P::T3
 end
-DBFGS(approx) = DBFGS(approx, 0.2)
-DBFGS(;inverse=true, theta=0.2) = DBFGS(inverse ? Inverse() : Direct(), theta)
-hasprecon(::DBFGS) = NoPrecon()
+DBFGS(approx) = DBFGS(approx, 0.2, nothing)
+DBFGS(;inverse=true, theta=0.2) = DBFGS(inverse ? Inverse() : Direct(), theta, nothing)
+hasprecon(::DBFGS{<:Any, <:Any, <:Nothing}) = NoPrecon()
+hasprecon(::DBFGS{<:Any, <:Any, <:Any}) = HasPrecon()
 summary(dbfgs::DBFGS{Inverse}) = "Inverse Damped BFGS"
 summary(dbfgs::DBFGS{Direct}) = "Direct Damped BFGS"
 
-function update!(scheme::DBFGS{<:Direct, <:Any}, B, s, y)
+function update!(scheme::DBFGS{<:Direct, <:Any, <:Any}, B, s, y)
    # We could write this as
    #     B .+= (y*y')/dot(s, y) - (B*s)*(s'*B)/(s'*B*s)
    #     B .+= (y*y')/dot(s, y) - b*b'/dot(s, b)
