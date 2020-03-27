@@ -19,5 +19,12 @@ update_preconditioner(method, x, P, ::HasPrecon) = method.P(x, P)
 apply_preconditioner(mstyle::InPlace, ::Nothing, Pg, ∇f) = copyto!(Pg, ∇f)
 apply_preconditioner(mstyle::InPlace, P, Pg, ∇f) = mul!(Pg, P, ∇f)
 apply_preconditioner(mstyle::OutOfPlace, ::Nothing, Pg, ∇f) = ∇f
-apply_preconditioner(mstyle::OutOfPlace, P, pg, ∇f) = P*∇f
+apply_preconditioner(mstyle::OutOfPlace, P, Pg, ∇f) = P*∇f
+apply_inverse_preconditioner(mstyle::InPlace, ::Nothing, Pg, ∇f) = copyto!(Pg, ∇f)
+apply_inverse_preconditioner(mstyle::InPlace, P, Pg, ∇f) = ldiv!(Pg, factorize(P), ∇f) # add special for Diagonal?
+function apply_inverse_preconditioner(mstyle::InPlace, P::Diagonal, Pg, ∇f)
+	Pg .= P.diag.\∇f
+end
+apply_inverse_preconditioner(mstyle::OutOfPlace, ::Nothing, Pg, ∇f) = ∇f
+apply_inverse_preconditioner(mstyle::OutOfPlace, P, pg, ∇f) = P\∇f
 

@@ -39,35 +39,38 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch{<:L
     x0, B0 = s0
     T = eltype(x0)
     # Remove B from all of this
-    x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(obj, approach, x0, copy(x0), B0)
+    objvars = prepare_variables(obj, approach, x0, copy(x0), B0)
 
-    qnvars = lbfgs_vars(modelscheme(approach), x)
-    ∇f0 = norm(∇fz, Inf) 
-    f0 = fz
+    qnvars = lbfgs_vars(modelscheme(approach), objvars.x)
+    ∇f0 = norm(objvars.∇fz, Inf) 
+    f0 = objvars.fz
     P = initial_preconditioner(approach, x0)
 
     #========================
          First iteration
     ========================#
-    x, fx, ∇fx, z, fz, ∇fz, qnvars, P = iterate(mstyle, 1, qnvars, x, fx, ∇fx, z, fz, ∇fz, P, approach, prob, obj, options)
+    objvars, qnvars, P = iterate(mstyle, 1, qnvars, objvars, P, approach, prob, obj, options)
     iter = 1
 
     # Check for gradient convergence
-    is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)
+    is_converged = converged(approach, objvars, ∇f0, options)
     while iter <= options.maxiter && !any(is_converged)
         iter += 1
         # take a step and update approximation
-        x, fx, ∇fx, z, fz, ∇fz, qnvars, P = iterate(mstyle, iter, qnvars, x, fx, ∇fx, z, fz, ∇fz, P, approach, prob, obj, options, false)
+        objvars, qnvars, P = iterate(mstyle, iter, qnvars, objvars, P, approach, prob, obj, options, false)
         # Check for gradient convergence
-        is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)
+        is_converged = converged(approach, objvars, ∇f0, options)
     end
-
+    x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     return ConvergenceInfo(approach, (P=P,B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
-function iterate(mstyle::InPlace, iter::Integer, qnvars::TwoLoopVars, x, fx::Tf, ∇fx, z, fz, ∇fz, P, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, prob::MinProblem, obj::ObjWrapper, options::MinOptions, is_first=nothing) where Tf
+function iterate(mstyle::InPlace, iter::Integer, qnvars::TwoLoopVars, objvars, P, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, prob::MinProblem, obj::ObjWrapper, options::MinOptions, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     scheme, linesearch, K = modelscheme(approach), algorithm(approach), approach.scaling # make grabber and get a better name than K
     current_memory = min(iter-1, scheme.memory)
+    x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
+    Tf = typeof(fz)
+
     # Move nexts into currs
     fx = fz
     copyto!(x, z)
@@ -87,17 +90,18 @@ function iterate(mstyle::InPlace, iter::Integer, qnvars::TwoLoopVars, x, fx::Tf,
     @. z = x + s
     # Update approximation
     fz, ∇fz, qnvars = update_obj!(obj, qnvars, α, x, ∇fx, z, ∇fz, current_memory, scheme)
-    return x, fx, ∇fx, z, fz, ∇fz, qnvars, P
+    return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=nothing, Pg=nothing), qnvars, P
 end
 
-function iterate(mstyle::OutOfPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, B, P, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, prob::MinProblem, obj::ObjWrapper, options::MinOptions, is_first=nothing) where Tf
+function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, prob::MinProblem, obj::ObjWrapper, options::MinOptions, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     scheme, linesearch = modelscheme(approach), algorithm(approach)
     # Move nexts into currs
+    x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
+    Tf = typeof(fz)
     fx = fz
     x = copy(z)
     ∇fx = copy(∇fz)
-
     # Update preconditioner
     P = update_preconditioner(approach, x, P)
     # Update current gradient and calculate the search direction

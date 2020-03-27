@@ -36,31 +36,39 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, op
     x0, B0 = s0
     T = eltype(x0)
     
-    x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(obj, approach, x0, copy(x0), B0)
-    qnvars = QNVars(copy(∇fz), copy(∇fz), copy(∇fz))
-    ∇f0 = norm(∇fz, Inf) 
-    f0 = fz
+    objvars = prepare_variables(obj, approach, x0, copy(x0), B0)
+    qnvars = QNVars(copy(objvars.∇fz), copy(objvars.∇fz), copy(objvars.∇fz))
+    ∇f0 = norm(objvars.∇fz, Inf) 
+    f0 = objvars.fz
 
     P = initial_preconditioner(approach, x0)
     #========================
          First iteration
     ========================#
-    x, fx, ∇fx, z, fz, ∇fz, B, P, qnvars = iterate(mstyle, qnvars, x, fx, ∇fx, z, fz, ∇fz, B, P, approach, prob, obj, options)
+    objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, prob, obj, options)
     iter = 1
     # Check for gradient convergence
-    is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)
-    while iter <= options.maxiter && !any(is_converged)
+    is_converged = converged(approach, objvars, ∇f0, options)
+    while iter < options.maxiter && !any(is_converged)
         iter += 1
-        # take a step and update approximation
-        x, fx, ∇fx, z, fz, ∇fz, B, P, qnvars = iterate(mstyle, qnvars, x, fx, ∇fx, z, fz, ∇fz, B, P, approach, prob, obj, options, false)
-        # Check for gradient convergence
-        is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options)
+        #========================
+                 iterate
+        ========================#
+        objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, prob, obj, options, false)
+        #========================
+            check convergence
+        ========================#
+        is_converged = converged(approach, objvars, ∇f0, options)
     end
-
-    return ConvergenceInfo(approach, (P=P,B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
+    x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
+    return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
-function iterate(mstyle::InPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, B, P, approach::LineSearch, prob::MinProblem, obj::ObjWrapper, options::MinOptions, is_first=nothing) where Tf
+function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, prob::MinProblem, obj::ObjWrapper, options::MinOptions, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
+    x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
+
+
+    Tf = typeof(fx)
     scheme, linesearch = modelscheme(approach), algorithm(approach)
     y, d, s = cache.y, cache.d, cache.s
 
@@ -84,11 +92,13 @@ function iterate(mstyle::InPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, B, P, a
 
     # Update approximation
     fz, ∇fz, B, s, y = update_obj!(obj, s, y, ∇fx, z, ∇fz, B, scheme, is_first)
-    return x, fx, ∇fx, z, fz, ∇fz, B, P, QNVars(d, s, y)
+    return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=B, Pg=Pg), P, QNVars(d, s, y)
 end
 
-function iterate(mstyle::OutOfPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, B, P, approach::LineSearch, prob::MinProblem, obj::ObjWrapper, options::MinOptions, is_first=nothing) where Tf
+function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch, prob::MinProblem, obj::ObjWrapper, options::MinOptions, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
+    x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
+    Tf = typeof(fx)
     scheme, linesearch = modelscheme(approach), algorithm(approach)
     # Move nexts into currs
     fx = fz
@@ -111,5 +121,5 @@ function iterate(mstyle::OutOfPlace, cache, x, fx::Tf, ∇fx, z, fz, ∇fz, B, P
     # Update approximation
     fz, ∇fz, B, s, y = update_obj(obj, s, ∇fx, z, ∇fz, B, scheme, is_first)
 
-    return x, fx, ∇fx, z, fz, ∇fz, B, P, QNVars(d, s, y)
+    return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=B, Pg=Pg), P, QNVars(d, s, y)
 end

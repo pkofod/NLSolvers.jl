@@ -99,6 +99,7 @@ export DBFGS, BFGS, SR1, DFP, GradientDescent, Newton, BB, LBFGS
 
 # Include the actual functions that expose the functionality in this package.
 include("optimize/linesearch/linesearch.jl")
+export HS, CD, HZ, FR, PRP, VPRP, LS, DY
 include("optimize/randomsearch/randomsearch.jl")
 export SimulatedAnnealing, PureRandomSearch, APSO
 include("optimize/directsearch/directsearch.jl")

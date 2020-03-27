@@ -4,37 +4,41 @@ function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, opti
     T = eltype(x0)
     Δmin = sqrt(eps(T))
 
-    x, fx, ∇fx, z, fz, ∇fz, B = prepare_variables(objective, approach, x0, copy(x0), B0)
-    p = copy(x)
+    objvars = prepare_variables(objective, approach, x0, copy(x0), B0)
+    qnvars = QNVars(objvars.z, objvars.z)
+    p = copy(objvars.x)
 
-    ∇f0 = norm(∇fz, Inf)
-    f0 = copy(fz)
+    ∇f0 = norm(objvars.∇fz, Inf)
+    f0 = copy(objvars.fz)
 
 
     Δk = T(20.0)
-    x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, reject = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δk, approach, objective, options)
+    objvars, Δkp1, reject = iterate!(p, objvars, Δk, approach, objective, options, qnvars)
 
     iter = 1
     # Check for convergence
-    is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options, reject, Δkp1)
+    is_converged = converged(approach, objvars, ∇f0, options, reject, Δkp1)
     while iter <= options.maxiter && !any(is_converged)
         iter += 1
-        x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, reject = iterate!(p, x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, approach, objective, options)
+        objvars, Δkp1, reject = iterate!(p, objvars, Δkp1, approach, objective, options, qnvars)
         # Check for convergence
-        is_converged = converged(approach, x, z, ∇fz, ∇f0, fx, fz, options, reject, Δkp1)
+        is_converged = converged(approach, objvars, ∇f0, options, reject, Δkp1)
     end
+    x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     return ConvergenceInfo(approach, (Δ=Δkp1, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
 
 
-function iterate!(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach::TrustRegion, objective, options, scale=false)
+function iterate!(p, objvars, Δk, approach::TrustRegion, objective, options, qnvars, scale=false)
+    x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     T = eltype(x)
     scheme, subproblemsolver = modelscheme(approach), algorithm(approach)
+    y, d, s = qnvars.y, qnvars.d, qnvars.s
 
     fx = fz
     copyto!(x, z)
     copyto!(∇fx, ∇fz)
-    spr = subproblemsolver(∇fx, Bx, Δk, p, scheme; abstol=1e-10)
+    spr = subproblemsolver(∇fx, B, Δk, p, scheme; abstol=1e-10)
     Δm = -spr.mz
     # Grab the model value, m. If m is zero, the solution, z, does not improve
     # the model value over x. If the model is not converged, but the optimal
@@ -51,7 +55,7 @@ function iterate!(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach::TrustRegion,
 
     # Update before acceptance, to keep adding information about the hessian
     # even when the step is not "good" enough.
-    fz, ∇fz, B = update_obj(objective, spr.p, ∇fx, z, ∇fz, Bx, scheme, scale)
+    fz, ∇fz, B, s, y = update_obj!(objective, spr.p, y, ∇fx, z, ∇fz, B, scheme)
 
     # Δf is often called ared or Ared for actual reduction. I prefer "change in"
     # f, or Delta f.
@@ -68,7 +72,7 @@ function iterate!(p, x, fx, ∇fx, z, fz, ∇fz, Bx, Δk, approach::TrustRegion,
         ∇fz .= ∇fx
     end
 
-    return x, fx, ∇fx, z, fz, ∇fz, B, Δkp1, reject_step
+    return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=B, Pg=nothing), Δkp1, reject_step
 end
 
 function update_trust_region(spr, R, p)

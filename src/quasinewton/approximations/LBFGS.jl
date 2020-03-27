@@ -11,8 +11,8 @@ end
 hasprecon(::LBFGS{<:Inverse, <:Any, <:Any, <:Nothing}) = NoPrecon()
 hasprecon(::LBFGS{<:Inverse, <:Any, <:Any, <:Any}) = HasPrecon()
 
-LBFGS() = LBFGS(Inverse(), TwoLoop(), 5, nothing)
-LBFGS(approx) = LBFGS(approx, TwoLoop(), 5, nothing)
+LBFGS(m::Int=5) = LBFGS(Inverse(), TwoLoop(), m, nothing)
+LBFGS(approx, m=5) = LBFGS(approx, TwoLoop(), m, nothing)
 """
 	q holds gradient at current state
 	history is a named tuple of S and Y
@@ -32,7 +32,6 @@ function find_direction!(scheme::LBFGS{<:Inverse, <:TwoLoop}, q,
         α[i] = ρ[i] * real(dot(S[i], q))
         q .-= α[i] .* Y[i]
     end
-
     # Copy scaled or preconditioned q into s for forward pass
     if memory > 0
       if scaling isa InitialScaling{<:ShannoPhua} # we need a pair to scale
@@ -41,6 +40,8 @@ function find_direction!(scheme::LBFGS{<:Inverse, <:TwoLoop}, q,
       elseif !(precon isa Nothing)
           ldiv!(d, precon, q)
       end
+    else
+      d .= q
     end
     # Forward pass
     @inbounds for i in 1:memory

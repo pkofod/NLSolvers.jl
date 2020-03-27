@@ -185,7 +185,8 @@ function prepare_variables(objective, approach, x0, ∇fz, B)
     end
     fx = copy(fz)
     ∇fx = copy(∇fz)
-    return x, fx, ∇fx, z, fz, ∇fz, B
+    Pg = ∇fz
+    return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=B, Pg=Pg)
 end
 
 function g_converged(∇fz, ∇f0, options)
@@ -211,7 +212,8 @@ function f_converged(fx, fz, options)
   f_converged = f_converged || isnan(fz)
   return f_converged
 end
-function converged(approach, x, z, ∇fz, ∇f0, fx, fz, options, skip=nothing, Δkp1=nothing)
+function converged(approach, objvars, ∇f0, options, skip=nothing, Δkp1=nothing)
+  x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
   xcon, gcon, fcon = x_converged(x, z, options), g_converged(∇fz, ∇f0, options), f_converged(fx, fz, options)
   if approach isa TrustRegion
     Δcon = isnan(Δkp1)
