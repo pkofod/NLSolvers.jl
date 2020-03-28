@@ -13,17 +13,17 @@ function preallocate_qn_caches_inplace(x0)
 end
 
 function minimize(obj::ObjWrapper, x0, approach::LineSearch, options::MinOptions)
-    _minimize(OutOfPlace(), MinProblem(;obj=obj), (x0, nothing), approach, options, QNVars(x0, x0))
+    _minimize(OutOfPlace(), MinProblem(;obj=obj), (x0, nothing), approach, options, nothing)
 end
 function minimize(obj::ObjWrapper, s0::Tuple, approach::LineSearch, options::MinOptions)
-    _minimize(OutOfPlace(), MinProblem(;obj=obj), s0, approach, options, nothing)
+    _minimize(OutOfPlace(), MinProblem(obj), s0, approach, options, nothing)
 end
 
 function minimize!(obj::ObjWrapper, x0, approach::LineSearch, options::MinOptions, cache=QNVars(x0, x0))
     _minimize(InPlace(), MinProblem(;obj=obj), (x0, nothing), approach, options, cache)
 end
 function minimize!(obj::ObjWrapper, s0::Tuple, approach::LineSearch, options::MinOptions, cache=QNVars(first(s0), first(s0)))
-    _minimize(InPlace(), MinProblem(;obj=obj), s0, approach, options, cache)
+    _minimize(InPlace(), MinProblem(obj), s0, approach, options, cache)
 end
 
 function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache)
@@ -37,9 +37,13 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, op
     T = eltype(x0)
     
     objvars = prepare_variables(obj, approach, x0, copy(x0), B0)
+    f0, ∇f0 = objvars.fz, norm(objvars.∇fz, Inf) # use user norm
+
+    if any(initial_converged(approach, objvars, ∇f0, options))
+        return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
+    end
+
     qnvars = QNVars(copy(objvars.∇fz), copy(objvars.∇fz), copy(objvars.∇fz))
-    ∇f0 = norm(objvars.∇fz, Inf) 
-    f0 = objvars.fz
 
     P = initial_preconditioner(approach, x0)
     #========================

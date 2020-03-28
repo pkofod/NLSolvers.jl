@@ -8,7 +8,7 @@ end
 
 struct DemboSteihaug <: ForcingSequence
 end
-η(fft::DemboSteihaug, info) = min(1/(info.k+2), info.normFx)
+η(fft::DemboSteihaug, info) = min(1/(info.k+2), info.ρFz)
 
 struct EisenstatWalkerA{T} <: ForcingSequence
     α::T
@@ -16,7 +16,7 @@ end
 function η(fft::EisenstatWalkerA, info)
     α = fft.α
 
-    ξ = (info.normFx - info.residual_old)/info.normFx_old
+    ξ = (info.ρFz - info.residual_old)/info.ρFx
     β = info.η_old^(1+sqrt(5)/2)
     η = β ≦ α ? η : max(ξ, β)
 end
@@ -33,9 +33,9 @@ EisenstatWalkerB() = EisenstatWalkerB(0.1, 1.0, 1+sqrt(5)/2, 0.5)
 
 function η(fft::EisenstatWalkerB, info)
     γ, ω, α = fft.γ, fft.ω, fft.α
-    T = typeof(info.normFx)
+    T = typeof(info.ρFz)
 
-    ρ = info.normFx/info.normFx_old
+    ρ = info.ρFz/info.ρFx
     ξ = γ*ρ^ω
     β = info.η_old^(1+sqrt(5)/2)
     η = β ≦ α ? η : max(ξ, β)
@@ -44,33 +44,37 @@ end
 struct ResidualKrylov{ForcingType<:ForcingSequence, Tη}
     force_seq::ForcingType
     η₀::Tη
-    itermax::Int
+    maxiter::Int
 end
-ResidualKrylov(; force_seq=FixedForceTerm(1e-4), eta0 = 1e-4, itermax=300)=ResidualKrylov(force_seq, eta0, itermax)
+ResidualKrylov(; force_seq=FixedForceTerm(1e-4), eta0 = 1e-4, maxiter=300)=ResidualKrylov(force_seq, eta0, maxiter)
 # map from method to forcing sequence
 η(fft::ResidualKrylov, info) = η(fft.force_seq, info)
 
 
 
 
-function nlsolve!(kp, x, method::ResidualKrylov; f_abstol=1e-8, f_reltol=1e-12)
+function nlsolve!(prob, x, method::ResidualKrylov; f_abstol=1e-8, f_reltol=1e-12)
     Tx = eltype(x)
     xp, Fx = copy(x), copy(x)
 
-    Fx = value!(kp, Fx, x)
-    normFx = norm(Fx, 2)
+    Fx = value!(prob, Fx, x)
+    ρFz = norm(Fx, 2)
 
-    stoptol = Tx(f_reltol)*normFx + Tx(f_abstol)
-    force_info = (k = 1, normFx=normFx, normFx_old=nothing, η_old=nothing)
+    JvOp = jacvec_op(prob)
 
-    for i = 1:method.itermax
-        # Update the point of evaluation
-        jacvec_fn(kp).u .= x
+    stoptol = Tx(f_reltol)*ρFz + Tx(f_abstol)
 
+    force_info = (k = 1, ρFz=ρFz, ρFx=nothing, η_old=nothing)
+
+    for i = 1:method.maxiter
         # Refactor this
-        ηₖ = i == 1 && !isa(method.force_seq, FixedForceTerm) ? method.η₀ : η(method, force_info)
+        if i == 1 && !isa(method.force_seq, FixedForceTerm) 
+            ηₖ = method.η₀
+        else 
+            ηₖ = η(method, force_info)
+        end
 
-        krylov_iter = IterativeSolvers.gmres_iterable!(xp, jacvec_fn(kp), Fx; maxiter=20)
+        krylov_iter = IterativeSolvers.gmres_iterable!(xp, jacvec_fn(prob), Fx; maxiter=20)
         local res
         rhs = ηₖ*norm(Fx)
         for item in krylov_iter
@@ -79,19 +83,19 @@ function nlsolve!(kp, x, method::ResidualKrylov; f_abstol=1e-8, f_reltol=1e-12)
                 break
             end
         end
-        x .= x .- xp
-        Fx = value!(kp, Fx, x)
+        @. x = x - xp
+        Fx = value!(prob, Fx, x)
 
         if norm(Fx, 2) < stoptol
             break
         end
-        normFx_old = force_info.normFx
+        ρFx = force_info.ρFz
         η_old = ηₖ
-        normFx = norm(Fx, 2)
-        force_info = (k = i, normFx=normFx, normFx_old=normFx_old, η_old=η_old, residual_old=res)
+        ρFz = norm(Fx, 2)
+        force_info = (k = i, ρFz=ρFz, ρFx=ρFx, η_old=η_old, residual_old=res)
     end
     return x, Fx
 end
-value!(kp::OnceDiffedJv, Fx, x) = kp.R(Fx, x)
-value_fn(kp) = kp.R
-jacvec_fn(kp) = kp.Jv
+value!(prob::OnceDiffedJv, Fx, x) = prob.R(Fx, x)
+value_fn(prob) = prob.R
+jacvec_fn(prob) = prob.Jv

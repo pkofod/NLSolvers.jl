@@ -5,14 +5,16 @@ function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, opti
     Δmin = sqrt(eps(T))
 
     objvars = prepare_variables(objective, approach, x0, copy(x0), B0)
+    f0, ∇f0 = objvars.fz, norm(objvars.∇fz, Inf) # use user norm
+
+    Δk = T(20.0)
+    if any(initial_converged(approach, objvars, ∇f0, options, false, Δk))
+        return ConvergenceInfo(approach, (Δ=Δk, ρs=norm(objvars.x.-objvars.z), ρx=norm(objvars.x), minimizer=objvars.z, fx=objvars.fx, minimum=objvars.fz, ∇fz=objvars.∇fz, f0=f0, ∇f0=∇f0, iter=0, time=time()-t0), options)
+    end
     qnvars = QNVars(objvars.z, objvars.z)
     p = copy(objvars.x)
 
-    ∇f0 = norm(objvars.∇fz, Inf)
-    f0 = copy(objvars.fz)
 
-
-    Δk = T(20.0)
     objvars, Δkp1, reject = iterate!(p, objvars, Δk, approach, objective, options, qnvars)
 
     iter = 1

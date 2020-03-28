@@ -53,19 +53,20 @@ function update(scheme::BFGS{<:Inverse}, H, s, y)
    H
 end
 function update!(scheme::BFGS{<:Inverse}, H, s, y)
+   n = length(s)
    σ = dot(s, y)
    ρ = inv(σ)
-
    s, y = vec(s), vec(y)
    if isfinite(ρ)
-      Hy = H*y
-      H .= H .+ ((σ+y'*Hy).*ρ^2)*(s*s')
-      Hys = Hy*s'
-      Hys .= Hys .+ Hys'
-      H .= H .- Hys.*ρ
-   end
-   H
+    Hy = H*y 
+    c1 = (σ + dot(y, Hy)) / σ^2
+    for i = 1:n, j = 1:n
+      H[i,j] += c1 * s[i] * s[j] - ρ * (Hy[i] * s[j] + Hy[j] * s[i])
+    end
+  end
+  H
 end
+
 # end
 # function update!(H, s, y, scheme::BFGS{<:Inverse})
 #    sy = dot(s, y)

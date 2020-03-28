@@ -21,7 +21,7 @@ function nlsolve!(prob::NEqProblem{<:OnceDiffed}, x, method::LineSearch=LineSear
 
     merit = MeritObjective(prob, F, Fx, Jx, d)
     # φ = LineObjective!(F, ∇fz, z, x, d, fx, dot(∇fx, d))
-    # Need to restrict to static and backtrakcing here
+    # Need to restrict to static and backtracking here
     φ = LineObjective(prob, merit, nothing, z, x, d, (ρF0^2)/2, -ρF0^2)
 
     # Perform line search along d

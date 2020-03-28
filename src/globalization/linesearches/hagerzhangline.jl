@@ -45,7 +45,7 @@ function find_steplength(hzl::HZAW, φ, c, ϵk=1e-6; maxiter = 100)
   while !isfinite(φc) && iter <= maxiter
     iter += 1
     # don't use interpolation, this is vanilla backtracking
-    ctmp, c, φc = interpolate(FixedInterp(), φ, φ0, dφ0, c, φc, T(1)/2)
+    ctmp, c, φc = interpolate(FixedInterp(), φ, φ0, dφ0, c, φc, T(1)/10)
   end
 
   # initial convergence
@@ -57,12 +57,10 @@ function find_steplength(hzl::HZAW, φ, c, ϵk=1e-6; maxiter = 100)
   if (2*δ-1)*dφ0 ≥ dφc ≥ σ*dφ0 && φc ≤ φ0 + ϵk
     return c, φc, true
   end
-
   # Set up interval
   a0, b0 = bracket(hzl, c, φ, ϵk, ρ)
   j = 0
   aj, bj  = a0, b0
-
   # Main loop
   while j < 50
     a, b = secant²(hzl, φ, aj, bj, ϵk)
@@ -138,7 +136,6 @@ function update(hzl::HZ,
     return a, b, (a=a==c, b=b==c)
   end
 end
-
 """
   bracket
 
@@ -153,13 +150,17 @@ function bracket(hzl::HZAW, c::T, φ, ϵk, ρ) where T
 
   #== B0 ==#
   cj = c
-  φc, dφcj = (cj, true)
+  φcj, dφcj = φ(cj, true)
   # we only want to store a number, so we don't store all iterates
   ci, φi = T(0), φ0
 
   maxj = 100
-  for j = 0:maxj
-    #== B1: φ is increasing at c, set b to cj as this is an upper bound ==#
+  for j = 1 :maxj
+    #==================================================
+      B1: φ is increasing at c, set b to cj as this is
+          an upper bound, since φ is initially decrea-
+          sing.
+    ==================================================#
     if dφcj ≥ T(0)
       a, b = ci, cj
       return a, b
@@ -167,7 +168,7 @@ function bracket(hzl::HZAW, c::T, φ, ϵk, ρ) where T
       #== B2 : φ is decreasing at cj but function value is sufficiently larger than
       # φ0, use U3 to update. ==#
       if φcj > φ0 + ϵk
-        a, b = _U3(hzl, T(0), cj, c, φ0, ϵk)
+        a, b = _U3(hzl, φ, T(0), cj, c, φ0, ϵk)
         return a, b
       end
       #== B3 ==#
@@ -178,7 +179,7 @@ function bracket(hzl::HZAW, c::T, φ, ϵk, ρ) where T
       end
       # expand by factor ρ > 0 (shouldn't this be > 1?)
       cj = ρ*cj
-      φcj, dφc = φ(cj, true)
+      φcj, dφcj = φ(cj, true)
     end
   end
 end

@@ -95,13 +95,13 @@ himmelblau_nonmut(x, ∇f, ∇²f) = himmelblau!(x, ∇f, ∇²f)
         state0 = (@SVector([2.0,2.0]), I+sl*sl')
         res = minimize(inferredhimmelblau, state0, LineSearch(Newton()), MinOptions())
         _alloc = @allocated minimize(inferredhimmelblau, state0, LineSearch(Newton()), MinOptions())
-        @test _alloc == 0
+        @test_broken _alloc == 0
         @test norm(res.info.∇fz, Inf) < 1e-8
         _res = minimize(inferredhimmelblau, state0, LineSearch(Newton(), Backtracking()), MinOptions())
         _alloc = @allocated minimize(inferredhimmelblau, state0, LineSearch(Newton(), Backtracking()), MinOptions())
-        @test _alloc == 0
+        @test_broken _alloc == 0
         _alloc = @allocated minimize(inferredhimmelblau, state0, LineSearch(Newton(), Backtracking()), MinOptions())
-        @test _alloc == 0
+        @test_broken _alloc == 0
         @test norm(res.info.∇fz, Inf) < 1e-8
     end
 

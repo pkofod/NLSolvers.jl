@@ -24,6 +24,7 @@ value(p::MinProblem, args...) = p.objective(args...)
 constraints(p::MinProblem, args...) = p.constraints(args...)
 MinProblem(; obj=nothing, bounds=nothing, manifold=Euclidean(0), constraints=nothing) =
   MinProblem(obj, bounds, manifold, constraints)
+MinProblem(obj) = MinProblem(obj, nothing, Euclidean(0), nothing)
 
 # These are conveniences that should be in optim
 solve(prob::MinProblem{<:Any, <:Nothing, <:Nothing, <:Nothing}, x0, solver=BFGS()) =
@@ -196,18 +197,24 @@ function g_converged(∇fz, ∇f0, options)
 end
 
 function x_converged(x, z, options)
-  y = x .- z
-  ynorm = options.x_norm(y)
-  x_converged = ynorm ≤ options.x_abstol
-  x_converged = x_converged || ynorm ≤ options.x_norm(x)*options.x_reltol
+  x_converged = false
+  if x !== nothing # if not calling from initial_converged
+    y = x .- z
+    ynorm = options.x_norm(y)
+    x_converged = x_converged || ynorm ≤ options.x_abstol
+    x_converged = x_converged || ynorm ≤ options.x_norm(x)*options.x_reltol
+  end
   x_converged = x_converged || any(isnan.(z))
   return x_converged
 end
 function f_converged(fx, fz, options)
-  y = fx - fz
-  ynorm = abs(y)
-  f_converged = ynorm ≤ options.f_abstol
-  f_converged = f_converged || ynorm ≤ abs(fx)*options.f_reltol
+  f_converged = false
+  if fx !== nothing # if not calling from initial_converged
+    y = fx - fz
+    ynorm = abs(y)
+    f_converged = f_converged || ynorm ≤ options.f_abstol
+    f_converged = f_converged || ynorm ≤ abs(fx)*options.f_reltol
+  end
   f_converged = f_converged || fz ≤ options.f_limit
   f_converged = f_converged || isnan(fz)
   return f_converged
@@ -225,4 +232,11 @@ function converged(approach, objvars, ∇f0, options, skip=nothing, Δkp1=nothin
     return xcon, gcon, fcon, Δcon 
   end
   return xcon, gcon, fcon
+end
+
+
+function initial_converged(approach, objvars, ∇f0, options, skip=nothing, Δkp1=nothing)
+  x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
+  objvars = (x=nothing, fx=nothing, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=B, Pg=Pg)
+  converged(approach, objvars, ∇f0, options, skip, Δkp1)
 end

@@ -2,10 +2,9 @@
 # case we only need to calculate one newton step. In the secular equation version
 # we need repeaed factorizations, and that is not as easy to exploit (but maybe
 # there's a good shifted one out there?)
-function nlsolve!(F::OnceDiffed, x, approach::TrustRegion{<:Newton, <:Dogleg}; maxiter=200, f_abstol=1e-8, f_reltol=1e-12)
-    scheme, linesearch = approach
+function nlsolve!(F::OnceDiffed, x, approach::TrustRegion{<:Newton, <:Any, <:Any}; maxiter=200, f_abstol=1e-8, f_reltol=1e-12)
 
-    function normed_residual(Jx, Fx, x)
+    function normed_residual(x, Fx, Jx)
         Fx, Jx = F(x, Fx, Jx)
         f = (norm(Fx)^2)/2
         if Jx isa Nothing
@@ -20,6 +19,6 @@ function nlsolve!(F::OnceDiffed, x, approach::TrustRegion{<:Newton, <:Dogleg}; m
         end
     end
     td = TwiceDiffed(normed_residual)
-    res = minimize!(td, x, approach)
-    return res[1], res[3], res[4]
+    res = minimize!(td, x, approach, MinOptions())
+    return res
 end

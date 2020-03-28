@@ -24,7 +24,7 @@ function theta(x)
    end
 end
 
-function F_powell!(Fx, x)
+function F_powell!(x, Fx)
         if ( x[1]^2 + x[2]^2 == 0 )
             dtdx1 = 0;
             dtdx2 = 0;

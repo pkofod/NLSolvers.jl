@@ -101,7 +101,7 @@ res = minimize(obj_inplace, copy(x0), ConjugateGradient(update=DY()), MinOptions
 print("NN  $(summary(ConjugateGradient(update=DY())))         ")
 @printf("%2.2e  %2.2e %d\n",  norm(res.info.minimizer-xopt,Inf),  res.info.minimum, res.info.iter)
 
-for _method in (GradientDescent, BFGS, DBFGS, DFP, SR1, LBFGS)
+for _method in (GradientDescent, LBFGS, BFGS, DBFGS, DFP, SR1)
 # for _method in (GradientDescent, BFGS, DBFGS, DFP, SR1)
     methodtxt = summary(_method()) 
     for m in (Inverse(), Direct())
@@ -164,7 +164,7 @@ res = minimize(obj_inplace, copy(x0), ConjugateGradient(), MinOptions())
 print("NN  $(summary(ConjugateGradient()))         ")
 @printf("%2.2e  %2.2e %d\n",  norm(res.info.minimizer-xopt,Inf),  res.info.minimum, res.info.iter)
 
-for _method in (GradientDescent, BFGS, DBFGS, DFP, SR1, LBFGS)
+for _method in (GradientDescent, LBFGS, BFGS, DBFGS, DFP, SR1)
     methodtxt = summary(_method()) 
     for m in (Inverse(), Direct())
         mtxt = m isa Inverse ? "(inverse): " : "(direct):  "
@@ -236,7 +236,7 @@ println("\nHimmelblau function")
 x0 = [3.0, 1.0]
 x0s = SVector{2}(x0)
 minimizers = [[3.0,2.0],[-2.805118,3.131312],[-3.779310,-3.283186],[3.584428,-1.848126]]
-for _method in (GradientDescent, BFGS, DBFGS, DFP, SR1, LBFGS)
+for _method in (GradientDescent, LBFGS, BFGS, DBFGS, DFP, SR1)
 # for _method in (GradientDescent, BFGS, DBFGS, DFP, SR1)
     methodtxt = summary(_method()) 
     for m in (Inverse(), Direct())
@@ -274,7 +274,7 @@ xrand = rand(2)
 xrands = SVector{2}(xrand)
 println("\nFrom a random point: ", xrand)
 
-for _method in (GradientDescent, BFGS, DBFGS, SR1, LBFGS)
+for _method in (GradientDescent, LBFGS, BFGS, DBFGS, SR1)
 # for _method in (GradientDescent, BFGS, DBFGS, DFP, SR1)
     methodtxt = summary(_method()) 
     for m in (Inverse(), Direct())
