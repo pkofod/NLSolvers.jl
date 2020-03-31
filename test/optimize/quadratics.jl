@@ -19,7 +19,11 @@ end
 
 
 using NLSolvers
-for approx in (BFGS(), DBFGS(), SR1(), DFP(), Newton(), BB()) # BB, CBB GradientDescent
+for approx in (GradientDescent(), BFGS(Inverse()), BFGS(Direct()), DBFGS(), SR1(Inverse()), SR1(Direct()), DFP(), Newton(), BB(), LBFGS()) # CBB
 	lsres =  minimize!(OnceDiffed(obj), zeros(2), LineSearch(approx, Backtracking()), MinOptions(maxiter=20000))
 	println(summary(approx), "\n          ||   $(lsres.info.iter)   ||   $(lsres.info.∇fz)")
 end
+#for approx in (GradientDescent(), BFGS(Inverse()), BFGS(Direct()), DBFGS(), SR1(Inverse()), SR1(Direct()), DFP(), Newton(), BB(), LBFGS()) # CBB
+#	lsres =  minimize!(OnceDiffed(obj), zeros(2), TrustRegion(approx, NTR()), MinOptions(maxiter=20000))
+#	println(summary(approx), "\n          ||   $(lsres.info.iter)   ||   $(lsres.info.∇fz)")
+#end

@@ -4,18 +4,17 @@ abstract type ObjWrapper end
 ########
 struct NonDiffed{Tobj} <: ObjWrapper
     obj::Tobj
-    NonDiffed(f; infer::Bool=false) = new{infer ? typeof(f) : Any}(f)
+    NonDiffed(f, infer=nothing) = new{infer !== nothing ? typeof(f) : Any}(f)
 end
 (od::NonDiffed)(x...) = od.obj(x...)
-(od::NonDiffed)(x, arg, args...) = throw(ArgumentError("NonDiffed cannot be called with more than one arguement."))
 
 ########
 ## C¹ ##
 ########
 struct OnceDiffed{Tobj} <: ObjWrapper
     obj::Tobj
-    function OnceDiffed(f; infer=false)
-        inferred = infer ? typeof(f) : Any
+    function OnceDiffed(f, infer=nothing)
+        inferred = infer !== nothing ? typeof(f) : Any
         return new{inferred}(f)
     end
 end
@@ -27,9 +26,9 @@ end
 struct OnceDiffedJv{TR, TJv} <: ObjWrapper
     R::TR # residual
     Jv::TJv # jacobian vector product operator
-    function OnceDiffedJv(f, jv; infer=false)
-        inferred_r = infer ? typeof(f) : Any
-        inferred_jv = infer ? typeof(jv) : Any
+    function OnceDiffedJv(f, jv, infer=nothing)
+        inferred_r = infer !== nothing ? typeof(f) : Any
+        inferred_jv = infer !== nothing ? typeof(jv) : Any
         return new{inferred_r, inferred_jv}(f, jv)
     end
 end
@@ -43,8 +42,8 @@ end
 ########
 struct TwiceDiffed{Tobj} <: ObjWrapper
     obj::Tobj
-    function TwiceDiffed(f; infer=false)
-        inferred = infer ? typeof(f) : Any
+    function TwiceDiffed(f, infer=nothing)
+        inferred = infer !== nothing ? typeof(f) : Any
         return new{inferred}(f)
     end
 end

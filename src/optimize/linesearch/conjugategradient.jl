@@ -189,15 +189,17 @@ end
 
 # using an "initial vectors" function we can initialize s if necessary or nothing if not to save on vectors
 minimize!(obj::ObjWrapper, x0, cg::ConjugateGradient, options::MinOptions) =
-  _minimize(MinProblem(;obj=obj), x0, LineSearch(cg, HZAW()), options, InPlace())
+  _solve(MinProblem(;obj=obj), x0, LineSearch(cg, HZAW()), options, InPlace())
 minimize!(obj::ObjWrapper, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) =
-  _minimize(MinProblem(;obj=obj), x0, approach, options, InPlace())
+  _solve(MinProblem(;obj=obj), x0, approach, options, InPlace())
 minimize(obj::ObjWrapper, x0, cg::ConjugateGradient, options::MinOptions) =
-  _minimize(MinProblem(;obj=obj), x0, LineSearch(cg, HZAW()), options, OutOfPlace())
+  _solve(MinProblem(;obj=obj), x0, LineSearch(cg, HZAW()), options, OutOfPlace())
 minimize(obj::ObjWrapper, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) =
-  _minimize(MinProblem(;obj=obj), x0, approach, options, OutOfPlace())
+  _solve(MinProblem(;obj=obj), x0, approach, options, OutOfPlace())
 
-function _minimize(prob::MinProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions, mstyle::MutateStyle)
+solve(prob::MinProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) = _solve(prob, x0, approach, options, OutOfPlace())
+solve!(prob::MinProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) = _solve(prob, x0, approach, options, InPlace())
+function _solve(prob::MinProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions, mstyle::MutateStyle)
     t0 = time()
 
     obj = prob.objective

@@ -25,7 +25,10 @@ _manifold(prob::NEqProblem) = prob.manifold
 function value(nleq::NEqProblem, x)
     nleq.residuals(x)
 end
-function value(nleq::NEqProblem, x, F)
+function value(nleq::NEqProblem{<:NonDiffed, <:Any, <:Any}, x, F)
+    nleq.residuals(x, F)
+end
+function value(nleq::NEqProblem{<:Any, <:Any, <:Any}, x, F)
     nleq.residuals(x, F, nothing)
 end
 

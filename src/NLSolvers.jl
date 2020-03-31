@@ -112,14 +112,16 @@ export minimize, minimize!, OptProblem, LineSearch, TrustRegion
 
 include("optimize/projectedgradient/asa.jl")
 
+include("fixedpoints/root.jl")
+export Anderson
+
 include("nlsolve/root.jl")
 export nlsolve, nlsolve!, NEqProblem
 export ResidualKrylov, ResidualKrylovProblem
+include("nlsolve/acceleration/anderson.jl")
+
 # Forcing Terms
 export FixedForceTerm, DemboSteihaug, EisenstatWalkerA, EisenstatWalkerB
-
-include("fixedpoints/root.jl")
-export Anderson
 
 
 function negate!(A::AbstractArray)

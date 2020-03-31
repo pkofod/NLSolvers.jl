@@ -9,35 +9,24 @@ struct RNMS end
 
 function find_steplength(rnms::RNMS, φ, φ0, fbar, ηk::T, τmin, τmax) where T
   α₊ = T(1)
-  α₋ = -α₊
-  γ = T(1)/4
+  α₋ = α₊
+  γ = T(1)/10000
   for k = 1:100
     φα₊ = φ(α₊)
     if φα₊ ≤ fbar + ηk - γ*α₊^2*φ0
       return α₊, φα₊
     end
-    φα₋ = φ(α₋)
+    φα₋ = φ(-α₋)
     if φα₋ ≤ fbar + ηk - γ*α₋^2*φ0
-      return α₋, φα₋
-    end
-    αt = α₊^2*φ0/(φα₊ + (2*α₊-1)*φ0)
-    if αt < τmin*α₊
-      α₊ = τmin*α₊
-    elseif αt > τmax*α₊
-      α₊ = τmax*α₊
-    else
-      α₊ = αt
+      return -α₋, φα₋
     end
 
-    # This needs to be safe guarded!
+    # update alpha+ and alpha-
+    αt = α₊^2*φ0/(φα₊ + (2*α₊-1)*φ0)
+    α₊ = clamp(αt, τmin*α₊, τmax*α₊)
+
     αt = α₋^2*φ0/(φα₋ + (2*α₋-1)*φ0)
-    if αt < τmin*α₋
-      α₋ = τmin*α₋
-    elseif αt > τmax*α₋
-      α₋ = τmax*α₋
-    else
-      α₋ = αt
-    end
+    α₋ = clamp(αt, τmin*α₋, τmax*α₋)
   end
   throw(ErrorException("Line search failed."))
 end
@@ -57,49 +46,61 @@ function safeguard_σ(σ::T, σmin, σmax, F) where T
 end
 
 struct DFSANE end
-function nlsolve!(prob::NEqProblem, x0, scheme::DFSANE, options::NEqOptions)
+function nlsolve!(obj, x0, scheme::DFSANE, options)
+  solve!(NEqProblem(obj), x0, scheme, options)
+end
+function solve!(prob::NEqProblem, x0, scheme::DFSANE, options::NEqOptions)
   F = prob.residuals
 
   T = eltype(x0)
 
-  σmin, σmax = 1e-10, 1e10
+  σmin, σmax = 1e-5, 1e5
   τmin, τmax = T(1)/10, T(1)/2
-
+  M = 4
   nexp = 2
 
-  fvals = @SVector(T[])
 
   x = copy(x0)
   Fx = copy(x0)
   Fx = value(prob, x, Fx)
   y = copy(Fx)
-  normFx0 = norm(Fx)
-  fx = normFx0^nexp
-  fvals = push(fvals, fx)
+  ρ0 = norm(Fx)
+  fx = ρ0^nexp
+  fvals = [fx]
+
+  abstol = 1e-5
+  reltol = 1e-4
+
   σ₀ = T(1)
   σ = safeguard_σ(σ₀, σmin, σmax, Fx)
-  for j = 1:10^5
+  j = 0
+  while j < options.maxiter
+    j += 1
     z=copy(x) # FIXME
-    fbar = maximum(x->fvals[x], max(1, length(fvals)-5+1):length(fvals))
+    push!(fvals, fx)
+    if length(fvals) > M
+      popfirst!(fvals)
+    end
+    fbar = maximum(fvals)
     d = -σ*Fx
-    ηk = normFx0/(1+j)^2
+    ηk = ρ0/(1+j)^2
 #    φ = LineObjective(prob, OnceDiffed(, Fx, z, x, d, fx, 0*fx)
-    φ(α) = norm(F(x.+α.*d, Fx, nothing))^nexp
-    φ0 = φ(0)
+    φ(α) = norm(F(x.+α.*d, Fx))^nexp
+    φ0 = fx
     α, φα = find_steplength(RNMS(), φ, φ0, fbar, ηk, τmin, τmax)
     # LineObjective(x) should return z as well!
     s = α*d
     x .= x.+s
-    y .= Fx
+    y .= -Fx
     Fx = value(prob, x, Fx)
-    y .-= Fx
-    fx = norm(Fx)^nexp
-    fvals = push(fvals, fx)
+    y .+= Fx
+    ρfx = norm(Fx)
+    fx = ρfx^nexp
     σ = norm(s)^2/dot(s, y)
     σ = safeguard_σ(σ, σmin, σmax, Fx)
-    if sqrt(φα) < 1e-8
+    if ρfx < sqrt(length(x))*abstol + reltol*ρ0
       break
     end
   end
-  x, Fx
+  x, Fx, j
 end

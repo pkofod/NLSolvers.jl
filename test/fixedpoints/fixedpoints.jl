@@ -11,3 +11,8 @@ fp3 = NLSolvers.fixedpoint!(G, zeros(2), Anderson(2, 2, 0.01, 1e2))
 @test all(fp1.x .≈ fp2.x)
 @test all(fp1.x .≈ fp3.x)
 
+fp1 = NLSolvers.nlsolve!(NEqProblem((x, F)->G(x, F).-x), zeros(2), Anderson(10000000,1, nothing,nothing))
+fp2 = NLSolvers.nlsolve!(NEqProblem((x, F)->G(x, F).-x), zeros(2), Anderson(2, 2, 0.3, 1e2))
+fp3 = NLSolvers.nlsolve!(NEqProblem((x, F)->G(x, F).-x), zeros(2), Anderson(2, 2, 0.01, 1e2))
+@test all(fp1.x .≈ fp2.x)
+@test all(fp1.x .≈ fp3.x)
