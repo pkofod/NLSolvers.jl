@@ -21,10 +21,12 @@ end
 x0 = [-1.2, 1.0]
 
 
-nlsolve!(OnceDiffed(nlsolvers_f), copy(x0), TrustRegion(NLSolvers.Newton(), Dogleg()))
 nlsolve!(OnceDiffed(nlsolvers_f), copy(x0), TrustRegion(NLSolvers.Newton()))
+nlsolve!(OnceDiffed(nlsolvers_f), copy(x0), TrustRegion(NLSolvers.Newton(), Dogleg()))
+nlsolve!(OnceDiffed(nlsolvers_f), copy(x0), TrustRegion(NLSolvers.Newton(), NTR()))
 nlsolve!(OnceDiffed(nlsolvers_f), copy(x0), TrustRegion(NLSolvers.Newton(), NWI()))
 # initial convergence
-nlsolve!(OnceDiffed(nlsolvers_f), fill(1.0, 2), TrustRegion(NLSolvers.Newton(), Dogleg()))
 nlsolve!(OnceDiffed(nlsolvers_f), fill(1.0, 2), TrustRegion(NLSolvers.Newton()))
+nlsolve!(OnceDiffed(nlsolvers_f), fill(1.0, 2), TrustRegion(NLSolvers.Newton(), Dogleg()))
+nlsolve!(OnceDiffed(nlsolvers_f), fill(1.0, 2), TrustRegion(NLSolvers.Newton(), NTR()))
 nlsolve!(OnceDiffed(nlsolvers_f), fill(1.0, 2), TrustRegion(NLSolvers.Newton(), NWI()))
