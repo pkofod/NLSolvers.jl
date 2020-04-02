@@ -46,7 +46,7 @@ function safeguard_σ(σ::T, σmin, σmax, F) where T
 end
 
 struct DFSANE end
-function nlsolve!(obj, x0, scheme::DFSANE, options)
+function nlsolve!(obj::ObjWrapper, x0, scheme::DFSANE, options)
   solve!(NEqProblem(obj), x0, scheme, options)
 end
 function solve!(prob::NEqProblem, x0, scheme::DFSANE, options::NEqOptions)

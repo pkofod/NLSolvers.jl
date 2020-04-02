@@ -7,7 +7,19 @@
 NLSolvers provides optimization, curve fitting, and equation solving functionalities for Julia.
 The goal is to provide a set of robust and flexible methods that runs fast and is easy to use.
 
-## solve and solve!
+## Installation
+Installing NLSolvers is easy, simply write
+```
+using Pkg
+Pkg.add("NLSolvers")
+```
+
+or use the REPL mode to install the package
+```
+]add NLSolvers
+```
+
+## Solving your problems
 NLSolvers.jl uses different problem types for different problems. For example, a `MinProblem` would
 be `solve!`ed or `solve`ed depending of the circumstances, where an objective function can be
 `minimize!`ed or `minimized`.
@@ -107,6 +119,9 @@ Results of minimization
   Iterations:    18
 
 ```
+The interface is almost the same and the fact that the only extra step seems to be to wrap the objective in a problem type might make the problem types seem redundant. However, the problem types are useful when manifolds, bounds and constraints enter the picture. They make sure that there is only ever one initial argument: the objective or the problem definition. The functions `minimize(!)` are really shortcuts for unconstrained optimization.
+
+
 
 Two types of functions:
 WorkVars # x, F, J, H, ??
@@ -136,18 +151,6 @@ NLsqProblem
 [[[on a state you can call -> lsiterate or triterate to sub-iterate on the line search problem]]]
 # NLSolvers
 Still under construction, so stuff will break (and improve!). Feel free to reach out with ideas and requests.
-
-## Installation
-Installing NLSolvers is easy, simply write
-```
-using Pkg
-Pkg.add("NLSolvers")
-```
-
-or use the REPL mode to install the package
-```
-]add NLSolvers
-```
 
 ## Documentation
 

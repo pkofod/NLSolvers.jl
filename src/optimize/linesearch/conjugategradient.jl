@@ -201,7 +201,9 @@ solve(prob::MinProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSear
 solve!(prob::MinProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) = _solve(prob, x0, approach, options, InPlace())
 function _solve(prob::MinProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions, mstyle::MutateStyle)
     t0 = time()
-
+    #==============
+         unpack
+    ==============#
     obj = prob.objective
     #==============
          Setup

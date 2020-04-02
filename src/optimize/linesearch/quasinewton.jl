@@ -37,31 +37,31 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, op
     T = eltype(x0)
     
     objvars = prepare_variables(obj, approach, x0, copy(x0), B0)
+    P = initial_preconditioner(approach, x0)
     f0, ∇f0 = objvars.fz, norm(objvars.∇fz, Inf) # use user norm
 
     if any(initial_converged(approach, objvars, ∇f0, options))
-        return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
+        x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
+        return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=0, time=time()-t0), options)
     end
-
     qnvars = QNVars(copy(objvars.∇fz), copy(objvars.∇fz), copy(objvars.∇fz))
 
-    P = initial_preconditioner(approach, x0)
-    #========================
-         First iteration
-    ========================#
+    #==============================
+             First iteration
+    ==============================#
     objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, prob, obj, options)
     iter = 1
     # Check for gradient convergence
     is_converged = converged(approach, objvars, ∇f0, options)
     while iter < options.maxiter && !any(is_converged)
         iter += 1
-        #========================
-                 iterate
-        ========================#
+        #==============================
+                     iterate
+        ==============================#
         objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, prob, obj, options, false)
-        #========================
-            check convergence
-        ========================#
+        #==============================
+                check convergence
+        ==============================#
         is_converged = converged(approach, objvars, ∇f0, options)
     end
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
