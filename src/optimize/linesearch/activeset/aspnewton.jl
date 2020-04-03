@@ -7,17 +7,17 @@ function active_model(prob::MinProblem{<:Any, <:Any, <:Nothing, <:Nothing}, an::
   epsg = sqrt(eps(eltype(x)))
   m = _manifold(objective)
   lower, upper = lowerbounds(prob), upperbounds(prob)
-    # Binding set 1
-    # true if free
-    lower_e = lower .+ epsg
-    upper_e = upper .- epsg
-    sl = .!( ((x .<= lower_e) .& (∇fx .>= 0)) .| ((x .>= upper_e) .& (∇fx .<= 0)) )
-    Ix = initialh(x) # An identity matrix of correct type
-end
+  # Binding set 1
+  # true if free
+  lower_e = lower .+ epsg
+  upper_e = upper .- epsg
+  sl = .!( ((x .<= lower_e) .& (∇fx .>= 0)) .| ((x .>= upper_e) .& (∇fx .<= 0)) )
+  Ix = initialh(x) # An identity matrix of correct type
 
-binding = isbinding.(sl, sl')
-## The hessian needs to be adapted to ignore the inactive region
-Hhat = cdiag.(B, binding, Ix)
+  binding = isbinding.(sl, sl')
+  ## The hessian needs to be adapted to ignore the inactive region
+  Hhat = cdiag.(B, binding, Ix)
+end
 
 ## The gradient needs to be zeroed out for the inactive region
 # set jxc to 0 if var in binding set
