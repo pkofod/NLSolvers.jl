@@ -94,12 +94,12 @@ const state0newton = (@SVector([2.0,2.0]), I+sl*sl')
     @testset "newton static" begin
         _res = minimize(inferredhimmelblau, state0newton, LineSearch(Newton()), MinOptions())
         _alloc = @allocated minimize(inferredhimmelblau, state0newton, LineSearch(Newton()), MinOptions())
-        @test_broken _alloc == 0
+        @test _alloc == 0
         @test norm(_res.info.∇fz, Inf) < 1e-8
 
         _res = minimize(inferredhimmelblau, state0newton, LineSearch(Newton(), Backtracking()), MinOptions())
         _alloc = @allocated minimize(inferredhimmelblau, state0newton, LineSearch(Newton(), Backtracking()), MinOptions())
-        @test_broken _alloc == 0
+        @test _alloc == 0
         @test norm(_res.info.∇fz, Inf) < 1e-8
     end
 end

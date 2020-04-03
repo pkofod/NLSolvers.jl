@@ -29,7 +29,7 @@ function HZAW(; decrease=0.1, curvature=0.9, theta=0.5, gamma=2/3)
   HZAW(decrease, curvature, theta, gamma)
 end
 
-function find_steplength(hzl::HZAW, φ, c, ϵk=1e-6; maxiter = 100)
+function find_steplength(mstyle, hzl::HZAW, φ, c, ϵk=1e-6; maxiter = 100)
   # c = initial(k) but this is done outisde
   T = typeof(φ.φ0)
   ϵk = T(ϵk)

@@ -4,7 +4,7 @@ function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, opti
     T = eltype(x0)
     Δmin = sqrt(eps(T))
 
-    objvars = prepare_variables(objective, approach, x0, copy(x0), B0)
+    objvars = prepare_variables(MinProblem(objective), approach, x0, copy(x0), B0)
     f0, ∇f0 = objvars.fz, norm(objvars.∇fz, Inf) # use user norm
 
     Δk = T(20.0)

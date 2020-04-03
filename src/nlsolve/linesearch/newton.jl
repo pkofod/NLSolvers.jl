@@ -25,7 +25,7 @@ function nlsolve!(prob::NEqProblem{<:OnceDiffed}, x, method::LineSearch=LineSear
     φ = LineObjective(prob, merit, nothing, z, x, d, (ρF0^2)/2, -ρF0^2)
 
     # Perform line search along d
-    α, f_α, ls_success = find_steplength(linesearch, φ, T(1.0))
+    α, f_α, ls_success = find_steplength(InPlace(), linesearch, φ, T(1.0))
 
     z .= x .+ α.*d
     Fx, Jx = F(x, Fx, Jx)

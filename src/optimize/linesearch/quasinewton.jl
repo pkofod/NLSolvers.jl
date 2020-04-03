@@ -36,7 +36,7 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, op
     x0, B0 = s0
     T = eltype(x0)
     
-    objvars = prepare_variables(obj, approach, x0, copy(x0), B0)
+    objvars = prepare_variables(prob, approach, x0, copy(x0), B0)
     P = initial_preconditioner(approach, x0)
     f0, ∇f0 = objvars.fz, norm(objvars.∇fz, Inf) # use user norm
 
@@ -88,9 +88,9 @@ function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, prob:
     φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # Perform line search along d
-    α, f_α, ls_success = find_steplength(linesearch, φ, Tf(1))
+    # Also returns final step vector and update the state
+    α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tf(1))
 
-    # Calculate final step vector and update the state
     @. s = α * d
     @. z = x + s
 
@@ -116,7 +116,7 @@ function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch, pr
     φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # # Perform line search along d
-    α, f_α, ls_success = find_steplength(linesearch, φ, Tf(1))
+    α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tf(1))
 
     # # Calculate final step vector and update the state
     s = @. α * d

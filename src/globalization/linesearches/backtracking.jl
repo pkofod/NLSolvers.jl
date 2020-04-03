@@ -159,7 +159,7 @@ end
 
 Returns a step length, (merit) function value at step length and success flag.
 """
-function find_steplength(ls::Backtracking, φ::T, λ) where T
+function find_steplength(mstyle, ls::Backtracking, φ::T, λ) where T
  	#== unpack ==#
 	φ0, dφ0 = φ.φ0, φ.dφ0
 	Tf = typeof(φ0)

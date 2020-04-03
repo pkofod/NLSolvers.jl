@@ -64,7 +64,7 @@ end
 	αt⁺ : minimizer of cubic that interpolates fu, ft, gu, gt
 ===============================================================================#
 
-function find_steplength(ls::Union{Backtracking, TwoPointQuadratic}, φ::T, d, x,
+function find_steplength(mstyle, ls::Union{Backtracking, TwoPointQuadratic}, φ::T, d, x,
 	                     λ, #
 						 ϕ_0::Tf,
 						 ∇f_x,

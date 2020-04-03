@@ -39,7 +39,7 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch{<:L
     x0, B0 = s0
     T = eltype(x0)
     # Remove B from all of this
-    objvars = prepare_variables(obj, approach, x0, copy(x0), B0)
+    objvars = prepare_variables(prob, approach, x0, copy(x0), B0)
 
     qnvars = lbfgs_vars(modelscheme(approach), objvars.x)
     ∇f0 = norm(objvars.∇fz, Inf) 
@@ -83,7 +83,7 @@ function iterate(mstyle::InPlace, iter::Integer, qnvars::TwoLoopVars, objvars, P
     φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # Perform line search along d
-    α, f_α, ls_success = find_steplength(linesearch, φ, Tf(1))
+    α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tf(1))
 
     s = current_memory == length(qnvars.S) ? qnvars.S[1] : qnvars.S[1+current_memory]
     @. s = α * d

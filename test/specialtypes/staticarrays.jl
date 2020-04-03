@@ -32,5 +32,5 @@ x0m = @MVector [-1.0, 0.0, 0.0]
 x0 = [-1.0, 0.0, 0.0]
 @time res = minimize!(obj_inplace, copy(x0m), ConjugateGradient(update=VPRP()), MinOptions());
 @time res = minimize!(obj_inplace, copy(x0), ConjugateGradient(update=VPRP()), MinOptions());
-@time_broken res = minimize!(obj_inplace, copy(x0m), LineSearch(BFGS()), MinOptions());
+#@test_broken res = minimize!(obj_inplace, copy(x0m), LineSearch(BFGS()), MinOptions());
 @time res = minimize!(obj_inplace, copy(x0), LineSearch(BFGS()), MinOptions());

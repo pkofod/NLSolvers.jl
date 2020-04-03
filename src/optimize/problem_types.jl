@@ -20,6 +20,9 @@ end
 _manifold(prob::MinProblem) = prob.manifold
 lowerbounds(mp::MinProblem) = mp.bounds[1]
 upperbounds(mp::MinProblem) = mp.bounds[2]
+isboundedonly(::MinProblem{<:Any, <:Nothing, <:Any, <:Any}) = false
+isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Nothing}) = true
+
 value(p::MinProblem, args...) = p.objective(args...)
 constraints(p::MinProblem, args...) = p.constraints(args...)
 MinProblem(; obj=nothing, bounds=nothing, manifold=Euclidean(0), constraints=nothing) =
@@ -162,9 +165,14 @@ end
   ∇f(x) calls:   53
 =#
 
-function prepare_variables(objective, approach, x0, ∇fz, B)
+function prepare_variables(prob, approach, x0, ∇fz, B)
+    objective = prob.objective
     z = x0
     x = copy(z)
+
+    if isboundedonly(prob)
+        clamp.(x0, lowerbounds(prob), upperbounds(prob)) == x || error("Initial guess not in the feasible region")
+    end
 
     if isa(B, Nothing)  # didn't provide a B
         if modelscheme(approach) isa GradientDescent

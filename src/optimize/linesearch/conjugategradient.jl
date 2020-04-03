@@ -250,7 +250,7 @@ function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{
     φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # Perform line search along d
-    α, f_α, ls_success = find_steplength(linesearch, φ, Tx(1))
+    α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tx(1))
 
     # Calculate final step vector and update the state
     @. z = x + α*d
@@ -283,7 +283,7 @@ function iterate(mstyle::OutOfPlace, cgvars::CGVars, objvars, approach::LineSear
     φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # Perform line search along d
-    α, f_α, ls_success = find_steplength(linesearch, φ, Tx(1))
+    α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tx(1))
 
     z = @. x + α*d
     fz, ∇fz = obj(z, ∇fz)
