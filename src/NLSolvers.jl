@@ -116,8 +116,9 @@ include("fixedpoints/root.jl")
 export Anderson
 
 include("nlsolve/root.jl")
-export nlsolve, nlsolve!, NEqProblem
+export nlsolve, nlsolve!, NEqProblem, NEqOptions
 export ResidualKrylov, ResidualKrylovProblem
+export DFSANE
 include("nlsolve/acceleration/anderson.jl")
 
 # Forcing Terms

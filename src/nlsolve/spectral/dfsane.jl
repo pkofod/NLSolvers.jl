@@ -46,10 +46,11 @@ function safeguard_σ(σ::T, σmin, σmax, F) where T
 end
 
 struct DFSANE end
-function nlsolve!(obj::ObjWrapper, x0, scheme::DFSANE, options)
-  solve!(NEqProblem(obj), x0, scheme, options)
+function nlsolve!(obj::ObjWrapper, x0, method::DFSANE, options::NEqOptions)
+  solve!(NEqProblem(obj), x0, method, options)
 end
-function solve!(prob::NEqProblem, x0, scheme::DFSANE, options::NEqOptions)
+function solve!(prob::NEqProblem, x0, method::DFSANE, options::NEqOptions)
+  t0 = time()
   F = prob.residuals
 
   T = eltype(x0)
@@ -61,11 +62,13 @@ function solve!(prob::NEqProblem, x0, scheme::DFSANE, options::NEqOptions)
 
 
   x = copy(x0)
+  ρs = norm(x)
   Fx = copy(x0)
   Fx = value(prob, x, Fx)
   y = copy(Fx)
-  ρ0 = norm(Fx)
-  fx = ρ0^nexp
+  ρ2F0 = norm(Fx, 2)
+  ρF0 = norm(Fx, Inf)
+  fx = ρ2F0^nexp
   fvals = [fx]
 
   abstol = 1e-5
@@ -73,9 +76,9 @@ function solve!(prob::NEqProblem, x0, scheme::DFSANE, options::NEqOptions)
 
   σ₀ = T(1)
   σ = safeguard_σ(σ₀, σmin, σmax, Fx)
-  j = 0
-  while j < options.maxiter
-    j += 1
+  iter = 0
+  while iter < options.maxiter
+    iter += 1
     z=copy(x) # FIXME
     push!(fvals, fx)
     if length(fvals) > M
@@ -83,24 +86,27 @@ function solve!(prob::NEqProblem, x0, scheme::DFSANE, options::NEqOptions)
     end
     fbar = maximum(fvals)
     d = -σ*Fx
-    ηk = ρ0/(1+j)^2
+    ηk = ρ2F0/(1+iter)^2
 #    φ = LineObjective(prob, OnceDiffed(, Fx, z, x, d, fx, 0*fx)
     φ(α) = norm(F(x.+α.*d, Fx))^nexp
     φ0 = fx
     α, φα = find_steplength(RNMS(), φ, φ0, fbar, ηk, τmin, τmax)
     # LineObjective(x) should return z as well!
     s = α*d
+    ρs = norm(s)
     x .= x.+s
     y .= -Fx
     Fx = value(prob, x, Fx)
     y .+= Fx
-    ρfx = norm(Fx)
-    fx = ρfx^nexp
+    ρ2fx = norm(Fx, 2)
+    ρfx = norm(Fx ,Inf)
+    fx = ρ2fx^nexp
     σ = norm(s)^2/dot(s, y)
     σ = safeguard_σ(σ, σmin, σmax, Fx)
-    if ρfx < sqrt(length(x))*abstol + reltol*ρ0
+    # use sqrt(length(x))*abs or abstol?
+    if ρfx < abstol + reltol*ρF0
       break
     end
   end
-  x, Fx, j
+  ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, ρs=ρs, iter=iter, time=time()-t0), options)
 end

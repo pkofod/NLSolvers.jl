@@ -7,6 +7,7 @@ function nlsolve!(prob::NEqProblem{<:OnceDiffed}, x, method::LineSearch=LineSear
 
   Fx, Jx = F(x, Fx, Jx)
   ρF0 = norm(Fx, Inf)
+  ρ2F0 = norm(Fx, 2)
   T = typeof(ρF0)
   stoptol = T(f_reltol)*ρF0 + T(f_abstol)
   if ρF0 < stoptol
@@ -36,5 +37,5 @@ function nlsolve!(prob::NEqProblem{<:OnceDiffed}, x, method::LineSearch=LineSear
     end
     iter += 1
   end
-  ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρs=ρs, iter=iter, time=time()-t0), options)
+  ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, ρs=ρs, iter=iter, time=time()-t0), options)
 end
