@@ -46,13 +46,9 @@ function safeguard_σ(σ::T, σmin, σmax, F) where T
 end
 
 struct DFSANE end
-function nlsolve!(obj::ObjWrapper, x0, method::DFSANE, options::NEqOptions)
-  solve!(NEqProblem(obj), x0, method, options)
-end
 function solve!(prob::NEqProblem, x0, method::DFSANE, options::NEqOptions)
   t0 = time()
-  F = prob.residuals
-
+  F = prob.R
   T = eltype(x0)
 
   σmin, σmax = 1e-5, 1e5
@@ -87,11 +83,9 @@ function solve!(prob::NEqProblem, x0, method::DFSANE, options::NEqOptions)
     fbar = maximum(fvals)
     d = -σ*Fx
     ηk = ρ2F0/(1+iter)^2
-#    φ = LineObjective(prob, OnceDiffed(, Fx, z, x, d, fx, 0*fx)
     φ(α) = norm(F(x.+α.*d, Fx))^nexp
     φ0 = fx
     α, φα = find_steplength(RNMS(), φ, φ0, fbar, ηk, τmin, τmax)
-    # LineObjective(x) should return z as well!
     s = α*d
     ρs = norm(s)
     x .= x.+s

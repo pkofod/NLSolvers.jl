@@ -1,6 +1,6 @@
-function nlsolve!(prob::NEqProblem{<:OnceDiffed}, x, method::LineSearch=LineSearch(Newton(), Static(1)), options=NEqOptions(); maxiter=2000, f_abstol=1e-8, f_reltol=1e-12)
+function nlsolve!(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Static(1)), options=NEqOptions(); maxiter=2000, f_abstol=1e-8, f_reltol=1e-12)
   t0 = time()
-  F = prob.residuals
+  F = prob.R
   scheme, linesearch = modelscheme(method), algorithm(method)
 
   z, d, Fx, Jx = copy(x), copy(x), copy(x), x*x'

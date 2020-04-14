@@ -29,7 +29,7 @@ function (nr::NormedResiduals)(x, Fx, Jx)
 end
 
 function solve!(prob::NEqProblem, x, approach::TrustRegion{<:Newton, <:Any, <:Any}, options::NEqOptions)
-    F = prob.residuals
+    F = prob.R
     # should we wrap a Fx here so we can log F0 info here?
     # and so we can extract it at the end as well?
     # xcache = copy(x).-1

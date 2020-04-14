@@ -117,7 +117,7 @@ export Anderson
 
 include("nlsolve/root.jl")
 export nlsolve, nlsolve!, NEqProblem, NEqOptions
-export ResidualKrylov, ResidualKrylovProblem
+export InexactNewton, KrylovNEqProblem
 export DFSANE
 include("nlsolve/acceleration/anderson.jl")
 

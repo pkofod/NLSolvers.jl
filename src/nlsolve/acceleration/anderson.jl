@@ -1,5 +1,5 @@
 function nlsolve!(prob::NEqProblem, x, method::Anderson, options=NEqOptions())
-  fixedpoint!((x, F)->prob.residuals(x, F).+x, x, method;
+  fixedpoint!((x, F)->prob.R(x, F).+x, x, method;
                      # kwargs
                      Gx = similar(x),
                      Fx = similar(x),

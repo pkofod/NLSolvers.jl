@@ -26,6 +26,13 @@ function minimize!(obj::ObjWrapper, s0::Tuple, approach::LineSearch, options::Mi
     _minimize(InPlace(), MinProblem(obj), s0, approach, options, cache)
 end
 
+function solve(obj::ObjWrapper, x0, approach::LineSearch, options::MinOptions)
+    _minimize(OutOfPlace(), MinProblem(;obj=obj), (x0, nothing), approach, options, nothing)
+end
+function solve(obj::ObjWrapper, s0::Tuple, approach::LineSearch, options::MinOptions)
+    _minimize(OutOfPlace(), MinProblem(obj), s0, approach, options, nothing)
+end
+
 function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache)
     t0 = time()
 

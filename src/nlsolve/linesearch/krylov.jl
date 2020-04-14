@@ -1,3 +1,10 @@
+# https://www.sciencedirect.com/science/article/pii/S0377042705007958
+# https://link.springer.com/article/10.1007/BF02592055
+# https://epubs.siam.org/doi/abs/10.1137/0917003
+# https://epubs.siam.org/doi/10.1137/0911026
+# https://pdfs.semanticscholar.org/b321/3084f663260076dcb92f2fa6031b362dc5bc.pdf
+# https://www.sciencedirect.com/science/article/abs/pii/0098135483800027
+# 
 using IterativeSolvers
 abstract type ForcingSequence end
 
@@ -6,75 +13,119 @@ struct FixedForceTerm{T} <: ForcingSequence
 end
 η(fft::FixedForceTerm, info) = fft.η
 
+# Truncated-Newton algorithms for large-scale unconstrained optimization
+# https://link.springer.com/article/10.1007/BF02592055
 struct DemboSteihaug <: ForcingSequence
 end
 η(fft::DemboSteihaug, info) = min(1/(info.k+2), info.ρFz)
 
+# See page 19 https://epubs.siam.org/doi/abs/10.1137/0917003
+# Choice 1 (2.2) - it appears that the extra F'(x)s evaluation would
+# not be worth it. It is at least as small as (2.1). If it's signifi-
+# cantly smaller we risk oversolving.
+# η₀ ∈ [0, 1)
 struct EisenstatWalkerA{T} <: ForcingSequence
-    α::T
+    s::T
+    ηmax::T
 end
+EisenstatWalkerA() = EisenstatWalkerA(0.1, 0.9999)
 function η(fft::EisenstatWalkerA, info)
-    α = fft.α
 
-    ξ = (info.ρFz - info.residual_old)/info.ρFx
+    η = (info.ρFz - info.residual_old)/info.ρFx
     β = info.η_old^(1+sqrt(5)/2)
-    η = β ≦ α ? η : max(ξ, β)
+    if β ≥ fft.s
+        η = max(η, β)
+    end
+    min(η, fft.ηmax)
 end
 
-struct EisenstatWalkerB{T} <: ForcingSequence
-    α::T
-    γ::T
-    ω::T
-    η₀::T
-end
+# See page 20 https://epubs.siam.org/doi/abs/10.1137/0917003
+# Choice 2 (2.6) seems to result in less oversolving.
+# γ ∈ [0, 1] - but recommend γ ≥ 0.7
+# α ∈ (1, 2]
+# η₀ ∈ [0, 1)
 # Default to EisenstatA-values. The paper [[[]]] suggests that γ ≥ 0.7 and
 # ω ≥ (1+sqrt(5))/2
-EisenstatWalkerB() = EisenstatWalkerB(0.1, 1.0, 1+sqrt(5)/2, 0.5)
+struct EisenstatWalkerB{T} <: ForcingSequence
+    s::T
+    α::T
+    γ::T
+    ηmax::T
+end
+EisenstatWalkerB() = EisenstatWalkerB(0.1, 1+sqrt(5)/2, 1.0)
 
+struct BrownSaad{T}
+
+end
 function η(fft::EisenstatWalkerB, info)
-    γ, ω, α = fft.γ, fft.ω, fft.α
     T = typeof(info.ρFz)
+    γ, α = fft.γ, fft.α
+
+    ηx = info.η_old
 
     ρ = info.ρFz/info.ρFx
-    ξ = γ*ρ^ω
-    β = info.η_old^(1+sqrt(5)/2)
-    η = β ≦ α ? η : max(ξ, β)
+    η = γ*ρ^α
+    β = γ*ηx^α
+    if β ≥ fft.s
+        η = max(η, β)
+    end
+    min(η, fft.ηmax)
 end
 
-struct ResidualKrylov{ForcingType<:ForcingSequence, Tη}
+# INB here:
+# https://pdfs.semanticscholar.org/b321/3084f663260076dcb92f2fa6031b362dc5bc.pdf
+# Originally Walker
+# S. C. EiSENSTAT AND H. F. Walker, Globally convergent inexact Newton
+# methods, SIAM J. Optim., 4 (1994), pp. 393-422.
+"""
+    InexactNewton(; force_seq, eta0, maxiter)
+
+Constructs a method type for the Inexact Newton's method with Linesearch.
+
+"""
+struct InexactNewton{ForcingType<:ForcingSequence, Tη}
     force_seq::ForcingType
     η₀::Tη
     maxiter::Int
 end
-ResidualKrylov(; force_seq=FixedForceTerm(1e-4), eta0 = 1e-4, maxiter=300)=ResidualKrylov(force_seq, eta0, maxiter)
+#InexactNewton(; force_seq=FixedForceTerm(1e-4), eta0 = 1e-4, maxiter=300)=InexactNewton(force_seq, eta0, maxiter)
+InexactNewton(; force_seq=DemboSteihaug(), eta0 = 1e-4, maxiter=300)=InexactNewton(force_seq, eta0, maxiter)
 # map from method to forcing sequence
-η(fft::ResidualKrylov, info) = η(fft.force_seq, info)
+η(fft::InexactNewton, info) = η(fft.force_seq, info)
 
 
-
-
-function nlsolve!(prob, x, method::ResidualKrylov; f_abstol=1e-8, f_reltol=1e-12)
+function nlsolve!(prob, x, method::InexactNewton, options::NEqOptions)
+    t0 = time()
     Tx = eltype(x)
     xp, Fx = copy(x), copy(x)
 
-    Fx = value!(prob, Fx, x)
-    ρFz = norm(Fx, 2)
-
-    JvOp = jacvec_op(prob)
-
-    stoptol = Tx(f_reltol)*ρFz + Tx(f_abstol)
+    Fx = prob.R(x, Fx)
+    ρ2F0 = norm(Fx, 2)
+    ρFz = ρ2F0
+    ρF0 = norm(Fx, Inf)
+    ρs = norm(x, 2)
+    JvOp = prob.Jv(x)
+    z = copy(x)
+    stoptol = Tx(options.f_reltol)*ρFz + Tx(options.f_abstol)
 
     force_info = (k = 1, ρFz=ρFz, ρFx=nothing, η_old=nothing)
 
-    for i = 1:method.maxiter
+    iter = 0
+
+    while iter < options.maxiter
+        iter += 1
+        x .= z
         # Refactor this
-        if i == 1 && !isa(method.force_seq, FixedForceTerm) 
+        if iter == 1 && !isa(method.force_seq, FixedForceTerm) 
             ηₖ = method.η₀
         else 
-            ηₖ = η(method, force_info)
+           ηₖ = η(method, force_info)
         end
 
-        krylov_iter = IterativeSolvers.gmres_iterable!(xp, jacvec_fn(prob), Fx; maxiter=20)
+        JvOp = prob.Jv(x)
+
+        xp .= 0
+        krylov_iter = IterativeSolvers.gmres_iterable!(xp, JvOp, Fx; maxiter=50)
         local res
         rhs = ηₖ*norm(Fx)
         for item in krylov_iter
@@ -83,18 +134,29 @@ function nlsolve!(prob, x, method::ResidualKrylov; f_abstol=1e-8, f_reltol=1e-12
                 break
             end
         end
-        @. x = x - xp
-        Fx = value!(prob, Fx, x)
+        ρs = norm(xp)
+        t = 1e-4
+        # use line searc functions here
+        btk_conv = false
+        ρFx = force_info.ρFz
 
+        # Backtracking
+        # 
+        it = 0
+        while !btk_conv
+            it += 1
+            @. z = x - xp
+            Fx = prob.R(z, Fx)
+            btk_conv = norm(Fx, 2) ≤ (1-t*(1-ηₖ))*ρFx || it > 20
+        end
         if norm(Fx, 2) < stoptol
             break
         end
-        ρFx = force_info.ρFz
         η_old = ηₖ
         ρFz = norm(Fx, 2)
-        force_info = (k = i, ρFz=ρFz, ρFx=ρFx, η_old=η_old, residual_old=res)
+        force_info = (k = iter, ρFz=ρFz, ρFx=ρFx, η_old=η_old, residual_old=res)
     end
-    return x, Fx
+    return ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, ρs=ρs, iter=iter, time=time()-t0), options)
 end
 value!(prob::OnceDiffedJv, Fx, x) = prob.R(Fx, x)
 value_fn(prob) = prob.R

@@ -26,17 +26,11 @@ end
 struct OnceDiffedJv{TR, TJv} <: ObjWrapper
     R::TR # residual
     Jv::TJv # jacobian vector product operator
-    function OnceDiffedJv(f, jv, infer=nothing)
-        inferred_r = infer !== nothing ? typeof(f) : Any
-        inferred_jv = infer !== nothing ? typeof(jv) : Any
-        return new{inferred_r, inferred_jv}(f, jv)
-    end
 end
 (od::OnceDiffedJv)(x) = od.R(x, nothing)
 (od::OnceDiffedJv)(x, ∇f) = od.R(x, ∇f)
 (od::OnceDiffedJv)(x, F, J) = od.R(x, F, J)
 (od::OnceDiffedJv)(x, y, z, args...) = throw(ArgumentError("OnceDiffedJv cannot be called with more than three arguements."))
-
 ########
 ## C² ##
 ########
