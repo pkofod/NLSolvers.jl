@@ -15,14 +15,14 @@ function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, opti
     p = copy(objvars.x)
 
 
-    objvars, Δkp1, reject = iterate!(p, objvars, Δk, approach, objective, options, qnvars)
+    objvars, Δkp1, reject = iterate!(p, objvars, Δk, approach, objective, options, qnvars, false)
 
     iter = 1
     # Check for convergence
     is_converged = converged(approach, objvars, ∇f0, options, reject, Δkp1)
     while iter <= options.maxiter && !any(is_converged)
         iter += 1
-        objvars, Δkp1, reject = iterate!(p, objvars, Δkp1, approach, objective, options, qnvars)
+        objvars, Δkp1, reject = iterate!(p, objvars, Δkp1, approach, objective, options, qnvars, false)
         # Check for convergence
         is_converged = converged(approach, objvars, ∇f0, options, reject, Δkp1)
     end
@@ -31,7 +31,7 @@ function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, opti
 end
 
 
-function iterate!(p, objvars, Δk, approach::TrustRegion, objective, options, qnvars, scale=false)
+function iterate!(p, objvars, Δk, approach::TrustRegion, objective, options, qnvars, scale=nothing)
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     T = eltype(x)
     scheme, subproblemsolver = modelscheme(approach), algorithm(approach)
@@ -57,7 +57,7 @@ function iterate!(p, objvars, Δk, approach::TrustRegion, objective, options, qn
 
     # Update before acceptance, to keep adding information about the hessian
     # even when the step is not "good" enough.
-    fz, ∇fz, B, s, y = update_obj!(objective, spr.p, y, ∇fx, z, ∇fz, B, scheme)
+    fz, ∇fz, B, s, y = update_obj!(objective, spr.p, y, ∇fx, z, ∇fz, B, scheme, scale)
 
     # Δf is often called ared or Ared for actual reduction. I prefer "change in"
     # f, or Delta f.
