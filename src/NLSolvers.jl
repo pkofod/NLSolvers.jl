@@ -2,6 +2,8 @@ module NLSolvers
 
 import Base: show, summary
 
+using Logging
+
 #============================ LinearAlgebra ===========================
   We use often use the LinearAlgebra functions dot and norm for opera-
   tions related to assessing angles between vectors, size of vectors

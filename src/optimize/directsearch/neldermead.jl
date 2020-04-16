@@ -137,15 +137,16 @@ struct ValuedSimplex{TS, TV, TO}
 end
 ValuedSimplex(S, V) = ValuedSimplex(S, V, sortperm(V))
 
-function minimize!(obj::ObjWrapper, x0, method::NelderMead, options)
-  minimize!(obj, x0, method, ABA(x0.*0 .+ 1), options)
+function solve!(prob::MinProblem, x0, method::NelderMead, options::MinOptions)
+  solve!(prob, x0, method, ABA(x0.*0 .+ 1), options)
 end
-function minimize!(obj::ObjWrapper, x0, method::NelderMead, as::AbstractSimplexer, options)
+function solve!(prob::MinProblem, x0, method::NelderMead, as::AbstractSimplexer, options)
+    obj = prob.objective
     simplex_vector = initial_simplex(as, x0)
     simplex_value = obj.(simplex_vector)
     order = sortperm(simplex_value)
     simplex = ValuedSimplex(simplex_vector, simplex_value, order)
-    res = minimize!(obj, simplex, method, options)
+    res = solve!(prob, simplex, method, options)
     x0 .= res.info.minimizer
     return res
 end
@@ -157,7 +158,9 @@ function NMCaches(simplex)
     return (x_reflect=x_reflect, x_cache=x_cache, x_centroid=x_centroid)
 end
 
-function minimize!(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead, options::MinOptions, nmcache=NMCaches(simplex))
+function solve!(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, options::MinOptions, nmcache=NMCaches(simplex))
+    global_logger(options.logger)
+    obj = prob.objective
     t0 = time()
     simplex_vector, simplex_value, i_order = simplex.S, simplex.V, simplex.O
     f0 = minimum(simplex.V)
@@ -178,6 +181,7 @@ function minimize!(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead, 
     while iter <= options.maxiter && !any(is_converged)
         iter += 1
         nm_obj, x_centroid = iterate!(obj, method, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
+        print_trace(method, options, iter, t0, simplex_value)
         if nm_obj ≤ options.nm_tol
             is_converged = true
         end
@@ -191,6 +195,14 @@ function minimize!(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead, 
     end
     ConvergenceInfo(method, (nm_obj=nm_obj, centroid=x_centroid, simplex=simplex, minimizer=x_min, minimum=f_min, f0=f0, iter=iter, time=time()-t0), options)
 end
+function print_trace(::NelderMead, options, iter, t0, simplex_value)
+    if !isa(options.logger, NullLogger) 
+        with_logger(options.logger) do 
+           @info @sprintf("iter: %d   time: %.4e   obj: %.4e", iter, time()-t0, minimum(simplex_value))
+        end
+    end
+end
+
 function iterate!(obj, method::NelderMead, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
     # Augment the iteration counter
     shrink = false
@@ -277,29 +289,27 @@ function iterate!(obj, method::NelderMead, simplex_vector, simplex_value, i_orde
 
     x_centroid = centroid!(x_centroid, simplex_vector, i_order[end])
     nm_obj = nmobjective(simplex_value)
-    # if nm_x < 1e-18
-    #     break
-    # end
-    # check conv
+
     nm_obj, x_centroid
 end
 
 #####################
 #    out-of-place   #
 #####################
-function minimize(obj::ObjWrapper, x0, method::NelderMead, options::MinOptions)
-  minimize(obj, x0, method, ABA(x0.*0 .+ 1), options)
+function solve(prob::MinProblem, x0, method::NelderMead, options::MinOptions)
+  solve(prob, x0, method, ABA(x0.*0 .+ 1), options)
 end
-function minimize(obj::ObjWrapper, x0, method::NelderMead, as::AbstractSimplexer, options::MinOptions)
+function solve(prob::MinProblem, x0, method::NelderMead, as::AbstractSimplexer, options::MinOptions)
     simplex_vector = initial_simplex(as, x0)
-    simplex_value = obj.(simplex_vector)
+    simplex_value = prob.objective.(simplex_vector)
     order = sortperm(simplex_value)
     simplex = ValuedSimplex(simplex_vector, simplex_value, order)
-    res = minimize!(obj, simplex, method, options)
+    res = solve!(prob, simplex, method, options)
     x0 .= res.info.minimizer
     return res
 end
-function minimize(obj::ObjWrapper, simplex::ValuedSimplex, method::NelderMead, options::MinOptions)
+function solve(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, options::MinOptions)
+    obj = prob.objective
     simplex_vector, simplex_value = simplex.S, simplex.V
     n = length(first(simplex_vector))
     m = length(simplex_vector)

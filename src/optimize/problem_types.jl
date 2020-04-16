@@ -11,8 +11,9 @@ are bounds constraints and manifold constraints on the inputs.
 Options are stored in `options` and must be an appropriate options type. See more information
 about options using `?MinOptions`.
 """
-struct MinProblem{O, B, M<:Manifold, C} <: AbstractProblem
+struct MinProblem{O, THv, B, M<:Manifold, C} <: AbstractProblem
     objective::O
+    Hv::THv
     bounds::B
     manifold::M
     constraints::C
@@ -25,17 +26,12 @@ isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Nothing}) = true
 
 value(p::MinProblem, args...) = p.objective(args...)
 constraints(p::MinProblem, args...) = p.constraints(args...)
-MinProblem(; obj=nothing, bounds=nothing, manifold=Euclidean(0), constraints=nothing) =
-  MinProblem(obj, bounds, manifold, constraints)
-MinProblem(obj) = MinProblem(obj, nothing, Euclidean(0), nothing)
+MinProblem(; obj=nothing, Hv=nothing, bounds=nothing, manifold=Euclidean(0), constraints=nothing) =
+  MinProblem(obj, Hv, bounds, manifold, constraints)
+MinProblem(obj) = MinProblem(obj, nothing, nothing, Euclidean(0), nothing)
 
-# These are conveniences that should be in optim
-solve(prob::MinProblem{<:Any, <:Nothing, <:Nothing, <:Nothing}, x0, solver=BFGS()) =
-  minimize(prob.objective, (x0, I), solver, MinOptions())
-solve!(prob::MinProblem{<:Any, <:Nothing, <:Nothing, <:Nothing}, x0, solver=BFGS()) =
-  minimize!(prob.objective, (x0, I), solver, MinOptions())
-solve!(prob::MinProblem{<:Any, <:Nothing, <:Nothing, <:Nothing}, s0::Tuple) =
-  minimize!(prob.objective, s0, BFGS(), MinOptions())
+minimize!(obj, args...) = solve!(MinProblem(obj), args...)
+minimize(obj, args...) = solve(MinProblem(obj), args...)
 
 struct ConvergenceInfo{Ts, T, O}
   solver::Ts
@@ -103,7 +99,7 @@ function Base.show(io::IO, ci::ConvergenceInfo)
   println(io, "  Iterations:    $(info.iter)")
 end
 
-struct MinOptions{T1, T2, T3, T4, Txn, Tgn}
+struct MinOptions{T1, T2, T3, T4, Txn, Tgn, Tlog}
   x_abstol::T1
   x_reltol::T1
   x_norm::Txn
@@ -116,17 +112,18 @@ struct MinOptions{T1, T2, T3, T4, Txn, Tgn}
   nm_tol::T3
   maxiter::T4
   show_trace::Bool
+  logger::Tlog
 end
 
 MinOptions(; x_abstol=0.0, x_reltol=0.0, x_norm=x->norm(x, Inf),
              g_abstol=1e-8, g_reltol=0.0, g_norm=x->norm(x, Inf),
              f_limit=-Inf, f_abstol=0.0, f_reltol=0.0,
-             nm_tol=1e-8, maxiter=10000, show_trace=false) =
+             nm_tol=1e-8, maxiter=10000, show_trace=false, logger=show_trace ? ConsoleLogger() : NullLogger()) =
   MinOptions(x_abstol, x_reltol, x_norm,
              g_abstol, g_reltol, g_norm,
              f_limit, f_abstol, f_reltol,
              nm_tol,
-             maxiter, show_trace)
+             maxiter, show_trace, logger)
 
 struct MinResults{Tr, Tc<:ConvergenceInfo, Th, Ts, To}
   res::Tr
@@ -142,7 +139,7 @@ function Base.show(io::IO, mr::MinResults)
   println(io, "* Status: $(any(converged(mr)))")
   println(io)
   println(io, "* Candidate solution")
-  println(io, "  Minimizer: ", minimizer(mr))
+  println(io, "  MinimizerMinOpt: ", minimizer(mr))
   println(io, "  Minimum:   ", minimum(mr))
   println(io)
   println(io, "* Found with")

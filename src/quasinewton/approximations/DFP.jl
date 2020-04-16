@@ -31,14 +31,14 @@ end
 function update!(scheme::DFP{<:Inverse}, H, s, y)
     σ = dot(s, y)
     ρ = inv(σ)
+
     H .+= ρ*s*s' - H*(y*y')*H/(y'*H*y)
     H
 end
 function update!(scheme::DFP{<:Direct}, B, s, y)
     σ = dot(s, y)
     ρ = inv(σ)
-    # so right now, we just skip the update if σ is zero
-    # but we might do something else here
+
     C = (I - ρ*y*s')
     B .= C*B*C' + ρ*y*y'
 

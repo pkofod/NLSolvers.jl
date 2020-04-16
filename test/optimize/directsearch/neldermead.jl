@@ -31,7 +31,7 @@ end
 #= test solve interface =#
 obj! = OnceDiffed(f∇f!)
 nm_prob! = MinProblem(obj=obj!)
-solve!(nm_prob!, rand(3), NelderMead())
+solve!(nm_prob!, rand(3), NelderMead(), MinOptions())
 
 
 minimize!(obj!, -rand(3)*9 .- 3, NLSolvers.NelderMead(), MinOptions())
@@ -41,7 +41,7 @@ F = obj!.(V)
 splx = NLSolvers.ValuedSimplex(V, F)
 
 minimize!(obj!, splx, NLSolvers.NelderMead(), MinOptions())
-solve!(nm_prob!, splx)
+solve!(nm_prob!, splx, NelderMead(), MinOptions())
 
 
 function powell(x, ∇f)

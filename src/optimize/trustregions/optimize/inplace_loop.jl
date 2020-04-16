@@ -1,4 +1,6 @@
 function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, options::MinOptions)
+    global_logger(options.logger)
+
     t0 = time()
     x0, B0 = s0
     T = eltype(x0)
@@ -25,11 +27,18 @@ function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, opti
         objvars, Δkp1, reject = iterate!(p, objvars, Δkp1, approach, objective, options, qnvars, false)
         # Check for convergence
         is_converged = converged(approach, objvars, ∇f0, options, reject, Δkp1)
+        print_trace(approach, options, iter, t0, objvars, Δkp1)
     end
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     return ConvergenceInfo(approach, (Δ=Δkp1, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
-
+function print_trace(approach::TrustRegion, options, iter, t0, objvars, Δ)
+    if !isa(options.logger, NullLogger) 
+        with_logger(options.logger) do 
+            @info @sprintf("iter: %d   time: %f   f: %.4e   ||∇f||: %.4e    Δ: %.4e", iter, time()-t0, objvars.fz, norm(objvars.∇fz, Inf), Δ)
+        end
+    end
+end
 
 function iterate!(p, objvars, Δk, approach::TrustRegion, objective, options, qnvars, scale=nothing)
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
