@@ -195,7 +195,7 @@ function solve!(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, op
     end
     ConvergenceInfo(method, (nm_obj=nm_obj, centroid=x_centroid, simplex=simplex, minimizer=x_min, minimum=f_min, f0=f0, iter=iter, time=time()-t0), options)
 end
-function print_trace(::NelderMead, options, iter, t0, simplex_value)
+@noinline function print_trace(::NelderMead, options, iter, t0, simplex_value)
     if !isa(options.logger, NullLogger) 
         with_logger(options.logger) do 
            @info @sprintf("iter: %d   time: %.4e   obj: %.4e", iter, time()-t0, minimum(simplex_value))

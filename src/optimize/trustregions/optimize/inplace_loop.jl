@@ -32,7 +32,7 @@ function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, opti
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     return ConvergenceInfo(approach, (Δ=Δkp1, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
-function print_trace(approach::TrustRegion, options, iter, t0, objvars, Δ)
+@noinline function print_trace(approach::TrustRegion, options, iter, t0, objvars, Δ)
     if !isa(options.logger, NullLogger) 
         with_logger(options.logger) do 
             @info @sprintf("iter: %d   time: %f   f: %.4e   ||∇f||: %.4e    Δ: %.4e", iter, time()-t0, objvars.fz, norm(objvars.∇fz, Inf), Δ)
