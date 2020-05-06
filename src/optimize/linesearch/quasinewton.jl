@@ -34,7 +34,7 @@ function solve(obj::ObjWrapper, s0::Tuple, approach::LineSearch, options::MinOpt
 end
 
 function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache)
-    global_logger(options.logger)
+#    global_logger(options.logger)
 
     t0 = time()
 
@@ -62,6 +62,7 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, op
     iter = 1
     # Check for gradient convergence
     is_converged = converged(approach, objvars, ∇f0, options)
+    print_trace(approach, options, iter, t0, objvars)
     while iter < options.maxiter && !any(is_converged)
         iter += 1
         #==============================
@@ -77,9 +78,9 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, op
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
-function print_trace(approach, options, iter, t0, objvars)
+function print_trace(approach::LineSearch, options, iter, t0, objvars)
     if !isa(options.logger, NullLogger) 
-       @info @sprintf("iter: %d   time: %.4e   obj: %.4e   ||∇f||: %.4e    α: %.4e", iter, time()-t0, objvars.fz, norm(objvars.∇fz, Inf), objvars.α)
+       println(@sprintf("iter: %d   time: %.4f   obj: %.4e   ||∇f||: %.4e    α: %.4e", iter, time()-t0, objvars.fz, norm(objvars.∇fz, Inf), objvars.α))
     end
 end
 function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, prob::MinProblem, obj::ObjWrapper, options::MinOptions, is_first=nothing)
@@ -113,11 +114,9 @@ function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, prob:
     fz, ∇fz, B, s, y = update_obj!(obj, s, y, ∇fx, z, ∇fz, B, scheme, is_first)
     return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=B, Pg=Pg, α=α), P, QNVars(d, s, y)
 end
-function print_trace(approach::TrustRegion, options, iter, t0, objvars, Δ)
+function print_trace(approach::LineSearch, options, iter, t0, objvars, Δ)
     if !isa(options.logger, NullLogger) 
-        with_logger(options.logger) do 
-            @info @sprintf("iter: %d   time: %f   f: %.4e   ||∇f||: %.4e    Δ: %.4e", iter, time()-t0, objvars.fz, norm(objvars.∇fz, Inf), Δ)
-        end
+        println(@sprintf("iter: %d   time: %f   f: %.4e   ||∇f||: %.4e    Δ: %.4e", iter, time()-t0, objvars.fz, norm(objvars.∇fz, Inf), Δ))
     end
 end
 

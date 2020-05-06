@@ -1,4 +1,4 @@
-using LinearAlgebra
+using NLSolvers, LinearAlgebra
 A = rand(2,2)
 A = abs.(A)
 A = Symmetric(A*A')

@@ -198,6 +198,7 @@ end
 function g_converged(∇fz, ∇f0, options)
   g_converged = options.g_norm(∇fz) ≤ options.g_abstol
   g_converged = g_converged || options.g_norm(∇fz) ≤ ∇f0*options.g_reltol
+  g_converged = g_converged || any(isnan, ∇fz))
   return g_converged
 end
 
@@ -209,7 +210,7 @@ function x_converged(x, z, options)
     x_converged = x_converged || ynorm ≤ options.x_abstol
     x_converged = x_converged || ynorm ≤ options.x_norm(x)*options.x_reltol
   end
-  x_converged = x_converged || any(isnan.(z))
+  x_converged = x_converged || any(isnan, z))
   return x_converged
 end
 function f_converged(fx, fz, options)

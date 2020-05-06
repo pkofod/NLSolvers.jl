@@ -89,19 +89,27 @@ AlgVars = (LSVars, QNVars, ...)
 OptVars?
 Initial modelvars and QNvars
 
-tracing!
 Abstract arrays!!! :|
 manifolds
 Use user norms
 MArray support
 Banded Jacobian
 AD
-nan return, nan gradient, nan hessian
+nan hessian
 
 line search should have a short curcuit for very small steps
 
 MaxProblem
 NLsqProblem
+
+# next steps 
+Mixed complementatiry
+SAMIN, BOXES, Projected solver
+Univariate!!
+IP Newotn
+Krylov Hessian
+LsqFit wrapper
+
 
 
 ## Common interface
@@ -315,12 +323,3 @@ end
 od = OnceDiffed(obj)
 lw = LsqWrapper1(od, true, true)
 ```
-
-# next steps 
-Mixed complementatiry
-SAMIN, BOXES, Projected solver
-Univariate!!
-IP Newotn
-Krylov Hessian
-LsqFit wrapper
-

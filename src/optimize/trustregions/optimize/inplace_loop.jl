@@ -1,5 +1,4 @@
 function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, options::MinOptions)
-    global_logger(options.logger)
 
     t0 = time()
     x0, B0 = s0
@@ -34,9 +33,7 @@ function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, opti
 end
 function print_trace(approach::TrustRegion, options, iter, t0, objvars, Δ)
     if !isa(options.logger, NullLogger) 
-        with_logger(options.logger) do 
-            @info @sprintf("iter: %d   time: %f   f: %.4e   ||∇f||: %.4e    Δ: %.4e", iter, time()-t0, objvars.fz, norm(objvars.∇fz, Inf), Δ)
-        end
+        println(@sprintf("iter: %d   time: %f   f: %.4e   ||∇f||: %.4e    Δ: %.4e", iter, time()-t0, objvars.fz, norm(objvars.∇fz, Inf), Δ))
     end
 end
 
