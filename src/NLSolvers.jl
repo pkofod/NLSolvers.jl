@@ -112,7 +112,7 @@ export Adam, AdaMax
 include("optimize/trustregions/trustregions.jl")
 export minimize, minimize!, OptProblem, LineSearch, TrustRegion
 
-include("optimize/projectedgradient/asa.jl")
+include("optimize/projected/root.jl")
 
 include("fixedpoints/root.jl")
 export Anderson
