@@ -87,7 +87,7 @@ function solve(prob::MinProblem, x0, scheme::ProjectedNewton, options::MinOption
         Hhat = diagrestrict.(inv(B), binding, Ix)
 
         # Update current gradient and calculate the search direction
-        d = clamp.(x.-Hhat*∇fx, lower, upper).-x # solve Bd = -∇fx
+        d = clamp.(x.-Hhat*∇fx, lower, upper).-x # solve Bd = -∇fx  #use find_direction here
         φ = _lineobjective(mstyle, prob, prob.objective, ∇fz, z, x, d, fz, dot(∇fz, d))
 
         # Perform line search along d
