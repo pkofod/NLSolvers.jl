@@ -26,8 +26,8 @@ Returns the correct element of the Hessian according to the active set and the d
 
 [1] http://www.mit.edu/~dimitrib/ProjectedNewton.pdf
 """
-function diagrestrict(x::T, c, i) where T
-    if !c
+function diagrestrict(x::T, ci, cj, i) where T
+    if !(ci | cj)
         # If not binding, then return the value
         return x
     else
@@ -52,6 +52,7 @@ function is_ϵ_active(x, lower, upper, ∇fx, ϵ∇f=eltype(x)(0))
     lower_active || upper_active
 end
 
+isbinding(i, j) = i & j
 function solve(prob::MinProblem, x0, scheme::ProjectedNewton, options::MinOptions)
     t0 = time()
 
@@ -69,8 +70,7 @@ function solve(prob::MinProblem, x0, scheme::ProjectedNewton, options::MinOption
     fz, ∇fz = objvars.fz, objvars.∇fz # use user norm
     fx, ∇fx = fz, copy(∇fz)
     B = B0
-    x = copy(x0)
-    z = copy(x0)
+    x, z = copy(x0), copy(x0)
     Tf = typeof(fz)
     is_first=false
     Ix = Diagonal(z.*0 .+ 1)
@@ -80,14 +80,10 @@ function solve(prob::MinProblem, x0, scheme::ProjectedNewton, options::MinOption
         ∇fx = copy(∇fz)
 
         activeset = is_ϵ_active.(x, lower, upper, ∇fx, ϵ∇f)
-        incactiveset = .!(activeset)
-
-        # The hessian needs to be adapted to ignore the active region
-        binding = .!(incactiveset*incactiveset')
-        Hhat = diagrestrict.(inv(B), binding, Ix)
-
+        @show activeset
+        Hhat = diagrestrict.(B, activeset, activeset', Ix)
         # Update current gradient and calculate the search direction
-        d = clamp.(x.-Hhat*∇fx, lower, upper).-x # solve Bd = -∇fx  #use find_direction here
+        d = clamp.(x.-Hhat\∇fx, lower, upper).-x # solve Bd = -∇fx  #use find_direction here
         φ = _lineobjective(mstyle, prob, prob.objective, ∇fz, z, x, d, fz, dot(∇fz, d))
 
         # Perform line search along d
