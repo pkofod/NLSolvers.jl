@@ -74,13 +74,13 @@ function solve(prob::MinProblem, x0, scheme::ProjectedNewton, options::MinOption
     Tf = typeof(fz)
     is_first=false
     Ix = Diagonal(z.*0 .+ 1)
-    for i = 1:options.maxiter
+    for iter = 1:options.maxiter
         x = copy(z)
         fx = copy(fz)
         ∇fx = copy(∇fz)
 
         activeset = is_ϵ_active.(x, lower, upper, ∇fx, ϵ∇f)
-        @show activeset
+
         Hhat = diagrestrict.(B, activeset, activeset', Ix)
         # Update current gradient and calculate the search direction
         d = clamp.(x.-Hhat\∇fx, lower, upper).-x # solve Bd = -∇fx  #use find_direction here
@@ -97,12 +97,13 @@ function solve(prob::MinProblem, x0, scheme::ProjectedNewton, options::MinOption
         
         # Update approximation
         fz, ∇fz, B, s, y = update_obj(prob.objective, s, ∇fx, z, ∇fz, B, Newton(), is_first)
-        if norm(x.-clamp.(x.-∇fx, lower, upper), Inf) < 1e-6
-            return z, fz, i
+        if norm(x.-clamp.(x.-∇fz, lower, upper), Inf) < 1e-6
+            return ConvergenceInfo(scheme, (prob=prob, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
         end
     end
     @show z.-min.(upper, max.(z.-∇fz, lower))
   z, fz, options.maxiter
+  return ConvergenceInfo(scheme, (prob=prob, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
 
 """

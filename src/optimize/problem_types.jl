@@ -21,7 +21,7 @@ end
 _manifold(prob::MinProblem) = prob.manifold
 lowerbounds(mp::MinProblem) = mp.bounds[1]
 upperbounds(mp::MinProblem) = mp.bounds[2]
-hasbounds(mp::MinProblem) = mp.bounds isa touple
+hasbounds(mp::MinProblem) = mp.bounds isa Tuple
 bounds(mp::MinProblem) = (lower=lowerbounds(mp), upper=upperbounds(mp))
 isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Any, <:Nothing}) = false
 isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Any, <:Any}) = false
@@ -50,9 +50,12 @@ function Base.show(io::IO, ci::ConvergenceInfo)
   println(io, "  $(summary(ci.solver))")
   println(io)
   println(io, "* Candidate solution:")
-  println(io, "  Final objective value:    $(@sprintf("%.2e", ci.info.minimum))")
+  println(io, "  Final objective value:          $(@sprintf("%.2e", ci.info.minimum))")
   if haskey(info, :∇fz)
-    println(io, "  Final gradient norm:      $(@sprintf("%.2e", opt.g_norm(info.∇fz)))")
+    println(io, "  Final gradient norm:            $(@sprintf("%.2e", opt.g_norm(info.∇fz)))")
+    if haskey(info, :prob) && hasbounds(info.prob)
+      println(io, "  Final projected gradient norm:  $(@sprintf("%.2e", opt.g_norm(info.minimizer.-clamp.(info.minimizer.-info.∇fz, info.prob.bounds...))))")
+    end
   end
   if haskey(info, :temperature)
     println(io, "  Final temperature:        $(@sprintf("%.2e", ci.info.temperature))")
