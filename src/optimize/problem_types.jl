@@ -21,9 +21,11 @@ end
 _manifold(prob::MinProblem) = prob.manifold
 lowerbounds(mp::MinProblem) = mp.bounds[1]
 upperbounds(mp::MinProblem) = mp.bounds[2]
+hasbounds(mp::MinProblem) = mp.bounds isa touple
 bounds(mp::MinProblem) = (lower=lowerbounds(mp), upper=upperbounds(mp))
-isboundedonly(::MinProblem{<:Any, <:Nothing, <:Any, <:Any}) = false
-isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Nothing}) = true
+isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Any, <:Nothing}) = false
+isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Any, <:Any}) = false
+isboundedonly(::MinProblem{<:Any, <:Any, <:Any, <:Any, <:Nothing}) = true
 
 value(p::MinProblem, args...) = p.objective(args...)
 constraints(p::MinProblem, args...) = p.constraints(args...)
@@ -167,9 +169,8 @@ function prepare_variables(prob, approach, x0, ∇fz, B)
     objective = prob.objective
     z = x0
     x = copy(z)
-
     if isboundedonly(prob)
-        clamp.(x0, lowerbounds(prob), upperbounds(prob)) == x || error("Initial guess not in the feasible region")
+        !any(clamp.(x0, lowerbounds(prob), upperbounds(prob)) .!= x0) || error("Initial guess not in the feasible region")
     end
 
     if isa(B, Nothing)  # didn't provide a B

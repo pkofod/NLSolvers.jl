@@ -50,7 +50,7 @@ function iterate(::InPlace, qnvars, objvars, P, approach, prob, obj, options, is
     B, A = active_model!(prob, B, ∇fx, x)
 
     # Update preconditioner
-    P = update_preconditioner(approach, x, P)
+    P = update_preconditioner(scheme, x, P)
     # Update current gradient and calculate the search direction
     d = find_direction(B, P, ∇fx, scheme) # solve Bd = -∇fx
     φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))

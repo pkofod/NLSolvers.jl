@@ -34,11 +34,11 @@ function find_direction!(scheme::LBFGS{<:Inverse, <:TwoLoop}, q,
     end
     # Copy scaled or preconditioned q into s for forward pass
     if memory > 0
-      if scaling isa InitialScaling{<:ShannoPhua} # we need a pair to scale
+      if scaling isa InitialScaling{<:ShannoPhua} && precon isa Nothing # we need a pair to scale
           k = scaling(S[memory], Y[memory])
           @. d = k*q
       elseif !(precon isa Nothing)
-          ldiv!(d, precon, q)
+          mul!(d, precon, q)
       end
     else
       d .= q
