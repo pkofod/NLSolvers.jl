@@ -21,8 +21,11 @@ end
 _manifold(prob::MinProblem) = prob.manifold
 lowerbounds(mp::MinProblem) = mp.bounds[1]
 upperbounds(mp::MinProblem) = mp.bounds[2]
-isboundedonly(::MinProblem{<:Any, <:Nothing, <:Any, <:Any}) = false
-isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Nothing}) = true
+hasbounds(mp::MinProblem) = mp.bounds isa touple
+bounds(mp::MinProblem) = (lower=lowerbounds(mp), upper=upperbounds(mp))
+isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Any, <:Nothing}) = false
+isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Any, <:Any}) = false
+isboundedonly(::MinProblem{<:Any, <:Any, <:Any, <:Any, <:Nothing}) = true
 
 value(p::MinProblem, args...) = p.objective(args...)
 constraints(p::MinProblem, args...) = p.constraints(args...)
@@ -166,9 +169,8 @@ function prepare_variables(prob, approach, x0, ∇fz, B)
     objective = prob.objective
     z = x0
     x = copy(z)
-
     if isboundedonly(prob)
-        clamp.(x0, lowerbounds(prob), upperbounds(prob)) == x || error("Initial guess not in the feasible region")
+        !any(clamp.(x0, lowerbounds(prob), upperbounds(prob)) .!= x0) || error("Initial guess not in the feasible region")
     end
 
     if isa(B, Nothing)  # didn't provide a B
@@ -198,7 +200,7 @@ end
 function g_converged(∇fz, ∇f0, options)
   g_converged = options.g_norm(∇fz) ≤ options.g_abstol
   g_converged = g_converged || options.g_norm(∇fz) ≤ ∇f0*options.g_reltol
-  g_converged = g_converged || any(isnan, ∇fz))
+  g_converged = g_converged || any(isnan, ∇fz)
   return g_converged
 end
 
@@ -210,7 +212,7 @@ function x_converged(x, z, options)
     x_converged = x_converged || ynorm ≤ options.x_abstol
     x_converged = x_converged || ynorm ≤ options.x_norm(x)*options.x_reltol
   end
-  x_converged = x_converged || any(isnan, z))
+  x_converged = x_converged || any(isnan, z)
   return x_converged
 end
 function f_converged(fx, fz, options)

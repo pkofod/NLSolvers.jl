@@ -51,7 +51,6 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch{<:L
     ========================#
     objvars, qnvars, P = iterate(mstyle, 1, qnvars, objvars, P, approach, prob, obj, options)
     iter = 1
-
     # Check for gradient convergence
     is_converged = converged(approach, objvars, ∇f0, options)
     while iter <= options.maxiter && !any(is_converged)
@@ -77,7 +76,7 @@ function iterate(mstyle::InPlace, iter::Integer, qnvars::TwoLoopVars, objvars, P
     copyto!(∇fx, ∇fz)
 
     # Update preconditioner
-    P = update_preconditioner(approach, x, P)
+    P = update_preconditioner(scheme, x, P) # returns nothing????
     # Update current gradient and calculate the search direction
     d = find_direction!(scheme, copy(∇fz), qnvars, current_memory, K, P) # solve Bd = -∇fx
     φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
@@ -103,7 +102,7 @@ function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch{<:L
     x = copy(z)
     ∇fx = copy(∇fz)
     # Update preconditioner
-    P = update_preconditioner(approach, x, P)
+    P = update_preconditioner(scheme, x, P)
     # Update current gradient and calculate the search direction
     d = find_direction(B, P, ∇fx, scheme) # solve Bd = -∇fx
     φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))

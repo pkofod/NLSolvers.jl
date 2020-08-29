@@ -274,7 +274,7 @@ function iterate(mstyle::OutOfPlace, cgvars::CGVars, objvars, approach::LineSear
     ∇fx = copy(∇fz)
 
     # Update preconditioner
-    P = update_preconditioner(approach, x, P)
+    P = update_preconditioner(scheme, x, P)
     P∇fz = apply_preconditioner(mstyle, P, Pg, ∇fz)
     # Update current gradient and calculate the search direction
     d = @. -P∇fz + β*d
