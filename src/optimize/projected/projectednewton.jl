@@ -16,7 +16,7 @@
 ActiveBox second order for bound constrained optimization. It's an active set and allows for rapid exploration of the constraint face. It employs a modified Armijo-line search that takes the active set into account. Details can be found in [1].
 
 ## References
-[1] http://www.mit.edu/~dimitrib/ActiveBox.pdf
+[1] http://www.mit.edu/~dimitrib/ProjectedNewton.pdf
 """
 struct ActiveBox{T}
     ϵ::T
