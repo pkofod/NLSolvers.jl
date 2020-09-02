@@ -56,6 +56,7 @@ function objective_return(f, g, H=nothing)
   end
 end
 export objective_return
+isallfinite(x) = mapreduce(isfinite, *, x)
 
 using StaticArrays
 abstract type MutateStyle end

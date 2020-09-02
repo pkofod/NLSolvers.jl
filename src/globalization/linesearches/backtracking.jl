@@ -1,7 +1,7 @@
 # Notation:
 # λ is the initial step length
 # α current trial step length
-# β current trial step length
+# β next trial step length
 # d is the search direction
 # x is the current iterate
 # f is the objective
@@ -86,8 +86,8 @@ struct Backtracking{T1, T2, T3, TR} <: LineSearcher
 	verbose::Bool
 end
 summary(bt::Backtracking) = "backtracking ("*summary(bt.interp)*")"
-Backtracking(; ratio=0.5, decrease=1e-4, maxiter=50,
-	           steprange=(0.0, Inf), interp=FixedInterp(),
+Backtracking(; ratio=0.5, decrease=1e-4, maxiter=26,
+	           steprange=(lower=0, upper=Inf), interp=FixedInterp(),
 	           verbose=false) =
  Backtracking(ratio, decrease, maxiter, interp, steprange, verbose)
 

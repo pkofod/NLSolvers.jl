@@ -2,10 +2,10 @@
   NTR is a trust region sub-problem solver that solves the quadratic programming
   problem subject to the solution being in a Euclidean Ball. It is appropriate
   for all types of Hessians. It solves the problem by solving the secular equ-
-  ation by a safeguarded Newton's method. The secular equation is simply a the
+  ation by a safeguarded Newton's method. The secular equation is simply the
   inverse of the difference between the step length and the trust region radius.
   It accepts either the Newton step if this is interior and the Hessian is po-
-  sitive definite, steps to the boundary (with some slack) in a clever way.
+  sitive definite, or steps to the boundary (with some slack) in a clever way.
 
   NTR accepts all Hessians and is therefore well-suited for Newton's method for
   any vexity. It is expensive for very large problems, but uses Cholesky fac-
@@ -137,7 +137,7 @@ function (ms::NTR)(∇f, H, Δ::T, s, scheme, λ0=0; abstol=1e-10, maxiter=50, �
         else # λ ∈ 𝓝, because the factorization failed (typo in CGT)
             # Use partial factorization to find δ and v such that
             # H(λ) + δ*e*e' = 0. All we can do here is to find a better
-            # lower bound, we cannot apply the newton step here.
+            # lower bound, we cannot apply the Newton step here.
             δ, v = λL_in_𝓝(H, F)
             λL = max(λL, λ + δ/dot(v, v)) # update lower bound
             λ = max(sqrt(λL*λU), λL + θ*(λU - λL)) # no converence possible, so step in bracket

@@ -4,7 +4,6 @@
   HZAW(;)
 
 Implements the approximate Wolfe line search developed in [HZ2005].
-???
 
 theta controls the search in U3 of the paper. It defaults to 0.5, and as
 a result uses bisection when (what is U3?)
