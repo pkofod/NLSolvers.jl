@@ -40,7 +40,7 @@ function fixedpoint!(g, x,
     Gx = g(x, Gx)
     Fx .= Gx .- x
     x .= Gx
-    finite_check = all(isfinite.(x)) # non-allocating?
+    finite_check = isallfinite(x)
     if norm(Fx) < f_abstol || !finite_check
       return (x=x, Fx=Fx, acc_iter=0, finite=finite_check)
     end
@@ -127,7 +127,7 @@ function fixedpoint!(g, x,
         x .= x .- (1 .- beta).*(Fx .- Qv*Rv*γv) # this is suboptimal!
     end
 
-    finite_check = all(isfinite.(x)) # non-allocating?
+    finite_check = isallfinite(x)
     if norm(Fx) < f_abstol || !finite_check
       return (x=x, Fx=Fx, acc_iter=0, finite=finite_check)
     end

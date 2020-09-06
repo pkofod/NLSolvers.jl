@@ -1,33 +1,38 @@
+# Add a calculate_γ from Bertsekas.
+# This is when an initial α = 1 far oversteps the first point that hits a boundary
+# on the piece-wise linear projected search path. This could be done always, never
+# or if last search required a lot of line search reductions 
+
 """
-# ProjectedNewton
+# ActiveBox
 ## Constructor
 ```julia
-    ProjectedNewton(; epsilon=1e-8)
+    ActiveBox(; epsilon=1e-8)
 ```
 
 `epsilon` determines the threshold for whether a bound is approximately active or not, see eqn. (32) in [1].
 
 ## Description
-ProjectedNewton second order for bound constrained optimization. It's an active set and allows for rapid exploration of the constraint face. It employs a modified Armijo-line search that takes the active set into account. Details can be found in [1].
+ActiveBox second order for bound constrained optimization. It's an active set and allows for rapid exploration of the constraint face. It employs a modified Armijo-line search that takes the active set into account. Details can be found in [1].
 
 ## References
 [1] http://www.mit.edu/~dimitrib/ProjectedNewton.pdf
 """
-struct ProjectedNewton{T}
+struct ActiveBox{T}
     ϵ::T
 end
-ProjectedNewton(; epsilon=1e-12) = ProjectedNewton(epsilon)
-
-modelscheme(::ProjectedNewton) = Newton()
+ActiveBox(; epsilon=1e-12) = ActiveBox(epsilon)
+summary(::ActiveBox) = "ActiveBox"
+modelscheme(::ActiveBox) = Newton()
 """
     diagrestrict(x, c, i)
 
 Returns the correct element of the Hessian according to the active set and the diagonal matrix described in [1].
 
-[1] http://www.mit.edu/~dimitrib/ProjectedNewton.pdf
+[1] http://www.mit.edu/~dimitrib/ActiveBox.pdf
 """
-function diagrestrict(x::T, c, i) where T
-    if !c
+function diagrestrict(x::T, ci, cj, i) where T
+    if !(ci | cj)
         # If not binding, then return the value
         return x
     else
@@ -52,7 +57,8 @@ function is_ϵ_active(x, lower, upper, ∇fx, ϵ∇f=eltype(x)(0))
     lower_active || upper_active
 end
 
-function solve(prob::MinProblem, x0, scheme::ProjectedNewton, options::MinOptions)
+isbinding(i, j) = i & j
+function solve(prob::MinProblem, x0, scheme::ActiveBox, options::MinOptions)
     t0 = time()
 
     x0, B0 = x0, [1.0 0.0; 0.0 1.0]
@@ -69,25 +75,20 @@ function solve(prob::MinProblem, x0, scheme::ProjectedNewton, options::MinOption
     fz, ∇fz = objvars.fz, objvars.∇fz # use user norm
     fx, ∇fx = fz, copy(∇fz)
     B = B0
-    x = copy(x0)
-    z = copy(x0)
+    x, z = copy(x0), copy(x0)
     Tf = typeof(fz)
     is_first=false
     Ix = Diagonal(z.*0 .+ 1)
-    for i = 1:options.maxiter
+    for iter = 1:options.maxiter
         x = copy(z)
         fx = copy(fz)
         ∇fx = copy(∇fz)
 
         activeset = is_ϵ_active.(x, lower, upper, ∇fx, ϵ∇f)
-        incactiveset = .!(activeset)
 
-        # The hessian needs to be adapted to ignore the active region
-        binding = .!(incactiveset*incactiveset')
-        Hhat = diagrestrict.(inv(B), binding, Ix)
-
+        Hhat = diagrestrict.(B, activeset, activeset', Ix)
         # Update current gradient and calculate the search direction
-        d = clamp.(x.-Hhat*∇fx, lower, upper).-x # solve Bd = -∇fx  #use find_direction here
+        d = clamp.(x.-Hhat\∇fx, lower, upper).-x # solve Bd = -∇fx  #use find_direction here
         φ = _lineobjective(mstyle, prob, prob.objective, ∇fz, z, x, d, fz, dot(∇fz, d))
 
         # Perform line search along d
@@ -101,12 +102,13 @@ function solve(prob::MinProblem, x0, scheme::ProjectedNewton, options::MinOption
         
         # Update approximation
         fz, ∇fz, B, s, y = update_obj(prob.objective, s, ∇fx, z, ∇fz, B, Newton(), is_first)
-        if norm(x.-clamp.(x.-∇fx, lower, upper), Inf) < 1e-6
-            return z, fz, i
+        if norm(x.-clamp.(x.-∇fz, lower, upper), Inf) < options.g_abstol
+            return ConvergenceInfo(scheme, (prob=prob, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
         end
     end
     @show z.-min.(upper, max.(z.-∇fz, lower))
   z, fz, options.maxiter
+  return ConvergenceInfo(scheme, (prob=prob, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
 
 """
@@ -119,7 +121,7 @@ end
 ArmijoBertsekas is the modified Armijo backtracking line search described in [1]. It takes into account whether an element of the gradient is active or not.
 
 ## References
-[1] http://www.mit.edu/~dimitrib/ProjectedNewton.pdf
+[1] http://www.mit.edu/~dimitrib/ActiveBox.pdf
 """
 struct ArmijoBertsekas{T1, T2, T3, TR} <: LineSearcher
     ratio::T1

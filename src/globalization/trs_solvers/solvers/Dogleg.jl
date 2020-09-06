@@ -1,3 +1,4 @@
+# TODO add double dog leg and subspace dogleg
 #===============================================================================
   Dogleg is a trust region sub-problem solver used to generate a cheap and crude
   approximation to the solution. If the Cauchy step is outside of the trust re-
@@ -74,7 +75,7 @@ function (dogleg::Dogleg)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
             else
                 t = T(0)
             end
-            p .= d_cauchy .+ t.*p
+            p .= d_cauchy .+ t .* p
             interior = false
         end
     end

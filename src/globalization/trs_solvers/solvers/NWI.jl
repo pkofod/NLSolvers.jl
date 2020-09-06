@@ -4,14 +4,14 @@
   Euclidean Ball. It is appropriate for all types of Hessians. It solves the
   problem by solving the secular equ  ation by a safeguarded Newton's method.
   The secular equation is simply a the inverse of the difference between the
-  step length and the trust region radius.   It accepts either the Newton step
-  if this is interior and the Hessian is positive definite, steps to the boundary
-  (with some slack) in a clever way.
+  step length and the trust region radius. It accepts either the Newton step
+  if this is interior and the Hessian is positive definite, or steps to the
+  boundary (with some slack) in a clever way.
 
   NTR accepts all Hessians and is therefore well-suited for Newton's method for
   any vexity. It is expensive for very large problems, and uses the direct
   eigensolution. This could potentially be useful for problems with simple 
-  structure of the eigenproblem, but we suspect NWI is superior in most cases.
+  structure of the eigenproblem, but I suspect NWI is superior in most cases.
 =================================================================================#
 
 struct NWI <: NearlyExactTRSP
@@ -177,9 +177,10 @@ function (ms::NWI)(∇f, H, Δ, p, scheme; abstol=1e-10, maxiter=50)
     # eigenvectors associated with the lowest eigenvalue.
     maybe_hard_case, first_j = is_maybe_hard_case(QΛQ, Qt∇f)
     # Solutions smaller than this lower bound on lambda are not allowed:
-    # they don't ridge H enough to make H_ridge PSD.
+    # as the shifted Hessian will not be PSD.
     λ_lb = -λmin
     λ = λ_lb
+    
     # Verify that it is actually the hard case situation by calculating the
     # step with λ = λmin (it's currently λ_lb, verify that that is correct).
     if maybe_hard_case

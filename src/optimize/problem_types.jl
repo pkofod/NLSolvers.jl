@@ -21,7 +21,7 @@ end
 _manifold(prob::MinProblem) = prob.manifold
 lowerbounds(mp::MinProblem) = mp.bounds[1]
 upperbounds(mp::MinProblem) = mp.bounds[2]
-hasbounds(mp::MinProblem) = mp.bounds isa touple
+hasbounds(mp::MinProblem) = mp.bounds isa Tuple
 bounds(mp::MinProblem) = (lower=lowerbounds(mp), upper=upperbounds(mp))
 isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Any, <:Nothing}) = false
 isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Any, <:Any}) = false
@@ -50,9 +50,13 @@ function Base.show(io::IO, ci::ConvergenceInfo)
   println(io, "  $(summary(ci.solver))")
   println(io)
   println(io, "* Candidate solution:")
-  println(io, "  Final objective value:    $(@sprintf("%.2e", ci.info.minimum))")
+  println(io, "  Final objective value:          $(@sprintf("%.2e", ci.info.minimum))")
   if haskey(info, :∇fz)
-    println(io, "  Final gradient norm:      $(@sprintf("%.2e", opt.g_norm(info.∇fz)))")
+    println(io, "  Final gradient norm:            $(@sprintf("%.2e", opt.g_norm(info.∇fz)))")
+    if haskey(info, :prob) && hasbounds(info.prob)
+      ρP = opt.g_norm(info.minimizer.-clamp.(info.minimizer.-info.∇fz, info.prob.bounds...))
+      println(io, "  Final projected gradient norm:  $(@sprintf("%.2e", ρP))")
+    end
   end
   if haskey(info, :temperature)
     println(io, "  Final temperature:        $(@sprintf("%.2e", ci.info.temperature))")
@@ -83,6 +87,9 @@ function Base.show(io::IO, ci::ConvergenceInfo)
     end
     if haskey(info, :∇fz)
       ρ∇f = opt.g_norm(info.∇fz)
+      if haskey(info, :prob) && hasbounds(info.prob)
+        println(io, "  |x - P(x - g(x))|     = $(@sprintf("%.2e", ρP)) <= $(@sprintf("%.2e", opt.g_abstol)) ($(ρP<=opt.g_abstol))")
+      end
       println(io, "  |g(x)|                = $(@sprintf("%.2e", ρ∇f)) <= $(@sprintf("%.2e", opt.g_abstol)) ($(ρ∇f<=opt.g_abstol))")
       println(io, "  |g(x)|/|g(x₀)|        = $(@sprintf("%.2e", ρ∇f/info.∇f0)) <= $(@sprintf("%.2e", opt.g_reltol)) ($(ρ∇f/info.∇f0<=opt.g_reltol))")
     end
@@ -93,6 +100,11 @@ function Base.show(io::IO, ci::ConvergenceInfo)
       else
         Δtest = info.Δ<=Δmin
         println(io, "  Δ                     = $(@sprintf("%.2e", info.Δ)) <= $(@sprintf("%.2e", Δmin)) ($Δtest)")
+      end
+    end
+    if haskey(info, :prob) && hasbounds(info.prob)
+      if any(iszero, info.minimizer.-info.prob.bounds[1]) || any(iszero, info.minimizer.-info.minimizer[2])
+        println(io, "\n  !!! Solution is at the boundary !!!")
       end
     end
   end

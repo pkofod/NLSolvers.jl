@@ -56,6 +56,7 @@ function objective_return(f, g, H=nothing)
   end
 end
 export objective_return
+isallfinite(x) = mapreduce(isfinite, *, x)
 
 using StaticArrays
 abstract type MutateStyle end
@@ -97,7 +98,7 @@ export NWI, Dogleg, NTR
 
 # Quasi-Newton (including Newton and gradient descent) functionality
 include("quasinewton/quasinewton.jl")
-export DBFGS, BFGS, SR1, DFP, GradientDescent, Newton, BB, LBFGS
+export DBFGS, BFGS, SR1, DFP, GradientDescent, Newton, BB, LBFGS, ActiveBox
 
 # Include the actual functions that expose the functionality in this package.
 include("optimize/linesearch/linesearch.jl")
