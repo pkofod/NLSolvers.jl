@@ -29,7 +29,7 @@ modelscheme(::ActiveBox) = Newton()
 
 Returns the correct element of the Hessian according to the active set and the diagonal matrix described in [1].
 
-[1] http://www.mit.edu/~dimitrib/ActiveBox.pdf
+[1] http://www.mit.edu/~dimitrib/ProjectedNewton.pdf
 """
 function diagrestrict(x::T, ci, cj, i) where T
     if !(ci | cj)
@@ -63,7 +63,7 @@ function solve(prob::MinProblem, x0, scheme::ActiveBox, options::MinOptions)
 
     x0, B0 = x0, [1.0 0.0; 0.0 1.0]
     lower, upper = bounds(prob)
-    ϵ∇f = scheme.ϵ
+    ϵbounds = mapreduce(b->(b[2] - b[1])/2, min, zip(lower, upper)) # [1, pp. 100: 5.41]
 
     !any(clamp.(x0, lower, upper) .!= x0) || error("Initial guess not in the feasible region")
 
@@ -83,8 +83,9 @@ function solve(prob::MinProblem, x0, scheme::ActiveBox, options::MinOptions)
         x = copy(z)
         fx = copy(fz)
         ∇fx = copy(∇fz)
-
-        activeset = is_ϵ_active.(x, lower, upper, ∇fx, ϵ∇f)
+ 
+        ϵ = min(norm(clamp.(x.-∇fx, lower, upper).-x), ϵbounds) # Kelley 5.41 and just after (83) in [1]
+        activeset = is_ϵ_active.(x, lower, upper, ∇fx, ϵ)
 
         Hhat = diagrestrict.(B, activeset, activeset', Ix)
         # Update current gradient and calculate the search direction

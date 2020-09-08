@@ -94,7 +94,7 @@ InexactNewton(; force_seq=DemboSteihaug(), eta0 = 1e-4, maxiter=300)=InexactNewt
 η(fft::InexactNewton, info) = η(fft.force_seq, info)
 
 
-function nlsolve!(prob, x, method::InexactNewton, options::NEqOptions)
+function solve!(prob::NEqProblem, x, method::InexactNewton, options::NEqOptions)
     t0 = time()
     Tx = eltype(x)
     xp, Fx = copy(x), copy(x)
