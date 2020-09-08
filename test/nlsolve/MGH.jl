@@ -31,11 +31,11 @@ for x0 in X0
     prob=NEqProblem(F!, nothing, nothing, NLSolvers.Euclidean(0))
     @show res = solve!(prob, copy(initial), TrustRegion(Newton(), Dogleg()), NEqOptions())
     
-    @show res = nlsolve!(prob, copy(initial), LineSearch(Newton(), Static(0.6)), NEqOptions())
+    @show res = solve!(prob, copy(initial), LineSearch(Newton(), Static(0.6)), NEqOptions())
     @test norm(res.info.best_residual, Inf) < 1e-8
     @show res = solve!(prob, copy(initial), DFSANE(), NEqOptions())
     probjv = NEqProblem(F!, Jvop, nothing, NLSolvers.Euclidean(0))
-    @show res = nlsolve!(probjv, copy(initial), InexactNewton(), NEqOptions())
+    @show res = solve!(probjv, copy(initial), InexactNewton(), NEqOptions())
 end
 
 function F!(x::Vector, fvec::Vector, fjac::Union{Nothing, Matrix}=nothing)

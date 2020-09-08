@@ -22,8 +22,6 @@ struct NEqProblem{TR, TJv, Tb, Tm<:Manifold}
 end
 NEqProblem(residuals) = NEqProblem(residuals, nothing, nothing, Euclidean(0))
 _manifold(prob::NEqProblem) = prob.manifold
-nlsolve!(obj, nextargs...) = solve!(NEqProblem(obj), nextargs...)
-
 
 function value(nleq::NEqProblem, x)
     nleq.R(x)
@@ -49,7 +47,7 @@ struct NEqOptions{T, Tmi}
   f_reltol::T
   maxiter::Tmi
 end
-NEqOptions(; f_limit=0.0, f_abstol=1e-8, f_reltol=1e-8, maxiter=10^4) = NEqOptions(f_limit, f_abstol, f_reltol, maxiter)
+NEqOptions(; f_limit=0.0, f_abstol=1e-8, f_reltol=1e-12, maxiter=10^4) = NEqOptions(f_limit, f_abstol, f_reltol, maxiter)
 
 function Base.show(io::IO, ci::ConvergenceInfo{<:Any, <:Any, <:NEqOptions})
   opt = ci.options

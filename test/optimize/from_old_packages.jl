@@ -52,6 +52,6 @@ end
 (obj, initial) = chebyquad(6)
 
 prob=NEqProblem(OnceDiffed(obj), nothing, NLSolvers.Euclidean(0))
-res = nlsolve!(prob, copy(initial), LineSearch(Newton(), Backtracking()))
+res = solve!(prob, copy(initial), LineSearch(Newton(), Backtracking()))
 @test norm(res[2], Inf) < 1e-12
 end

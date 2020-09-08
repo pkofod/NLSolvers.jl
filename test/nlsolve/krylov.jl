@@ -47,7 +47,7 @@ function OnceDiffedJv(F; seed, autodiff=false)
 end
 
 FJacOp = OnceDiffedJv(F_powell!; seed=rand(3))
-nlsolve!(FJacOp, rand(3), ResidualKrylov(FixedForceTerm(0.4), 1e-3, 300))
+solve!(FJacOp, rand(3), ResidualKrylov(FixedForceTerm(0.4), 1e-3, 300))
 
 function f_2by2!(F, x)
     F[1] = (x[1]+3)*(x[2]^3-7)+18
@@ -65,7 +65,7 @@ function g_2by2!(J, x)
 end
 
 FJacOp2 = OnceDiffedJv(f_2by2!; seed=rand(2))
-nlsolve!(FJacOp2, rand(2), ResidualKrylov(FixedForceTerm(0.4), 1e-3, 300))
+solve!(FJacOp2, rand(2), ResidualKrylov(FixedForceTerm(0.4), 1e-3, 300))
 
 
 

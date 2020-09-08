@@ -2,7 +2,7 @@
 # case we only need to calculate one newton step. In the secular equation version
 # we need repeaed factorizations, and that is not as easy to exploit (but maybe
 # there's a good shifted one out there?)
-nlsolve!(F::OnceDiffed, x, approach::TrustRegion{<:Newton, <:Any, <:Any}, options::NEqOptions) = 
+solve!(F::OnceDiffed, x, approach::TrustRegion{<:Newton, <:Any, <:Any}, options::NEqOptions) = 
   solve!(NEqProblem(F), x, approach, options)
 struct NormedResiduals{Tx, Tfx, Tf}
   x::Tx
