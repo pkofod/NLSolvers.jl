@@ -6,14 +6,21 @@ function dfsane_exponential(x, Fx)
   end
   Fx
 end
+
+function FJ_dfsane_exponential!(x, Fx, Jx)
+  ForwardDiff.jacobian!(Jx, (y,x)->dfsane_exponential(x,y), Fx, x)
+  Fx, Jx
+end
+
 n = 1000
 x0 = fill(n/(n-1), n)
+prob_obj = NLSolvers.NEqObjective(dfsane_exponential, nothing, FJ_dfsane_exponential!, nothing)
 
-solve!(NEqProblem(NonDiffed(dfsane_exponential)), x0, NLSolvers.DFSANE(), NLSolvers.NEqOptions())
+solve!(NEqProblem(prob_obj), x0, NLSolvers.DFSANE(), NLSolvers.NEqOptions())
 
 n = 10000
 x0 = fill(n/(n-1), n)
-solve!(NEqProblem(NonDiffed(dfsane_exponential)), x0, NLSolvers.DFSANE(), NLSolvers.NEqOptions())
+solve!(NEqProblem(prob_obj), x0, NLSolvers.DFSANE(), NLSolvers.NEqOptions())
 
 
 function dfsane_exponential2(x, Fx)

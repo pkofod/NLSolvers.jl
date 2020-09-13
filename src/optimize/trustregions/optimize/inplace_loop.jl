@@ -1,29 +1,31 @@
-function minimize!(objective::ObjWrapper, s0::Tuple, approach::TrustRegion, options::MinOptions)
+function solve!(problem::OptimizationProblem, s0::Tuple, approach::TrustRegion, options::MinOptions)
 
     t0 = time()
     x0, B0 = s0
     T = eltype(x0)
     Δmin = sqrt(eps(T))
 
-    objvars = prepare_variables(MinProblem(objective), approach, x0, copy(x0), B0)
+    objvars = prepare_variables(problem, approach, x0, copy(x0), B0)
     f0, ∇f0 = objvars.fz, norm(objvars.∇fz, Inf) # use user norm
 
     Δk = T(20.0)
     if any(initial_converged(approach, objvars, ∇f0, options, false, Δk))
-        return ConvergenceInfo(approach, (Δ=Δk, ρs=norm(objvars.x.-objvars.z), ρx=norm(objvars.x), minimizer=objvars.z, fx=objvars.fx, minimum=objvars.fz, ∇fz=objvars.∇fz, f0=f0, ∇f0=∇f0, iter=0, time=time()-t0), options)
+        return ConvergenceInfo(approach, (Δ=Δk, ρs=norm(objvars.x.-objvars.z), ρx=norm(objvars.x),
+                                          minimizer=objvars.z, fx=objvars.fx, minimum=objvars.fz,
+                                          ∇fz=objvars.∇fz, f0=f0, ∇f0=∇f0, iter=0, time=time()-t0), options)
     end
     qnvars = QNVars(objvars.z, objvars.z)
     p = copy(objvars.x)
 
 
-    objvars, Δkp1, reject = iterate!(p, objvars, Δk, approach, objective, options, qnvars, false)
+    objvars, Δkp1, reject = iterate!(p, objvars, Δk, approach, problem, options, qnvars, false)
 
     iter = 1
     # Check for convergence
     is_converged = converged(approach, objvars, ∇f0, options, reject, Δkp1)
     while iter <= options.maxiter && !any(is_converged)
         iter += 1
-        objvars, Δkp1, reject = iterate!(p, objvars, Δkp1, approach, objective, options, qnvars, false)
+        objvars, Δkp1, reject = iterate!(p, objvars, Δkp1, approach, problem, options, qnvars, false)
         # Check for convergence
         is_converged = converged(approach, objvars, ∇f0, options, reject, Δkp1)
         print_trace(approach, options, iter, t0, objvars, Δkp1)
@@ -37,12 +39,11 @@ function print_trace(approach::TrustRegion, options, iter, t0, objvars, Δ)
     end
 end
 
-function iterate!(p, objvars, Δk, approach::TrustRegion, objective, options, qnvars, scale=nothing)
+function iterate!(p, objvars, Δk, approach::TrustRegion, problem, options, qnvars, scale=nothing)
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     T = eltype(x)
     scheme, subproblemsolver = modelscheme(approach), algorithm(approach)
     y, d, s = qnvars.y, qnvars.d, qnvars.s
-
     fx = fz
     copyto!(x, z)
     copyto!(∇fx, ∇fz)
@@ -63,7 +64,7 @@ function iterate!(p, objvars, Δk, approach::TrustRegion, objective, options, qn
 
     # Update before acceptance, to keep adding information about the hessian
     # even when the step is not "good" enough.
-    fz, ∇fz, B, s, y = update_obj!(objective, spr.p, y, ∇fx, z, ∇fz, B, scheme, scale)
+    fz, ∇fz, B, s, y = update_obj!(problem, spr.p, y, ∇fx, z, ∇fz, B, scheme, scale)
 
     # Δf is often called ared or Ared for actual reduction. I prefer "change in"
     # f, or Delta f.

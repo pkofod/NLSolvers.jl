@@ -7,20 +7,6 @@
 # f is the objective
 # φ is the line search objective and is a function of the step length only
 
-# TODO
-# For non-linear systems of equations equations we generally choose the sum-of-
-# squares merit function. Some useful things to remember is:
-#
-# f(y) = 1/2*|| F(y) ||^2 =>
-# ∇_df = -d'*J(x)'*F(x)
-#
-# where we remember the notation x means the current iterate here. This means
-# that if we step in the Newton direction such that d is defined by
-#
-# J(x)*d = -F(x) => -d'*J(x)' = F(x)' =>
-# ∇_df = -F(x)'*F(x) = -f(x)*2
-#
-
 # This file contains several implementation of what we might call "Backtracking".
 # The AbstractBacktracking line searches try to satisfy the Amijo(-Goldstein)
 # condition:

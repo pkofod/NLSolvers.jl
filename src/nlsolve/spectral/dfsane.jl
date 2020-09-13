@@ -48,7 +48,7 @@ end
 struct DFSANE end
 function solve!(prob::NEqProblem, x0, method::DFSANE, options::NEqOptions)
   t0 = time()
-  F = prob.R
+  F = prob.R.F
   T = eltype(x0)
 
   σmin, σmax = 1e-5, 1e5
@@ -60,7 +60,7 @@ function solve!(prob::NEqProblem, x0, method::DFSANE, options::NEqOptions)
   x = copy(x0)
   ρs = norm(x)
   Fx = copy(x0)
-  Fx = value(prob, x, Fx)
+  Fx = F(x, Fx)
   y = copy(Fx)
   ρ2F0 = norm(Fx, 2)
   ρF0 = norm(Fx, Inf)
@@ -68,14 +68,14 @@ function solve!(prob::NEqProblem, x0, method::DFSANE, options::NEqOptions)
   fvals = [fx]
 
   abstol = 1e-5
-  reltol = 1e-4
+  reltol = 1e-8
 
   σ₀ = T(1)
   σ = safeguard_σ(σ₀, σmin, σmax, Fx)
   iter = 0
   while iter < options.maxiter
     iter += 1
-    z=copy(x) # FIXME
+    z = copy(x) # FIXME
     push!(fvals, fx)
     if length(fvals) > M
       popfirst!(fvals)
@@ -90,7 +90,7 @@ function solve!(prob::NEqProblem, x0, method::DFSANE, options::NEqOptions)
     ρs = norm(s)
     x .= x.+s
     y .= -Fx
-    Fx = value(prob, x, Fx)
+    Fx = F(x, Fx)
     y .+= Fx
     ρ2fx = norm(Fx, 2)
     ρfx = norm(Fx ,Inf)

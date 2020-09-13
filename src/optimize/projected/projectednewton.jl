@@ -58,7 +58,7 @@ function is_ϵ_active(x, lower, upper, ∇fx, ϵ∇f=eltype(x)(0))
 end
 
 isbinding(i, j) = i & j
-function solve(prob::MinProblem, x0, scheme::ActiveBox, options::MinOptions)
+function solve(prob::OptimizationProblem, x0, scheme::ActiveBox, options::MinOptions)
     t0 = time()
 
     x0, B0 = x0, [1.0 0.0; 0.0 1.0]
@@ -90,7 +90,7 @@ function solve(prob::MinProblem, x0, scheme::ActiveBox, options::MinOptions)
         Hhat = diagrestrict.(B, activeset, activeset', Ix)
         # Update current gradient and calculate the search direction
         d = clamp.(x.-Hhat\∇fx, lower, upper).-x # solve Bd = -∇fx  #use find_direction here
-        φ = _lineobjective(mstyle, prob, prob.objective, ∇fz, z, x, d, fz, dot(∇fz, d))
+        φ = _lineobjective(mstyle, prob, ∇fz, z, x, d, fz, dot(∇fz, d))
 
         # Perform line search along d
         # Also returns final step vector and update the state

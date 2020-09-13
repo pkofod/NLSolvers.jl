@@ -1,5 +1,5 @@
-function update_obj!(objective, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothing)
-    fz, ∇fz = objective(z, ∇fz)
+function update_obj!(problem, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothing)
+    fz, ∇fz = upto_gradient(problem, z, ∇fz)
     # add Project gradient
 
     # Update y
@@ -29,8 +29,8 @@ function update_obj!(objective, s, y, ∇fx, z, ∇fz, B, scheme, scale=nothing)
     return fz, ∇fz, B, s, y
 end
 
-function update_obj!(objective, s, y, ∇fx, z, ∇fz, B, scheme::Newton, scale=nothing)
-    fz, ∇fz, B = objective(z, ∇fz, B)
+function update_obj!(problem, s, y, ∇fx, z, ∇fz, B, scheme::Newton, scale=nothing)
+    fz, ∇fz, B = upto_hessian(problem, z, ∇fz, B)
 
     return fz, ∇fz, B, s, s
 end
@@ -70,7 +70,7 @@ function update_obj(objective, s, ∇fx, z, ∇fz, B, scheme, scale=nothing)
 end
 
 function update_obj(objective, s, ∇fx, z, ∇fz, B, scheme::Newton, is_first=nothing)
-    fz, ∇fz, B = objective(z, ∇fx, B)
+    fz, ∇fz, B = upto_hessian(objective, z, ∇fx, B)
 
     return fz, ∇fz, B, s, nothing
 end

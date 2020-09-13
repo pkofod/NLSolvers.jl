@@ -86,8 +86,9 @@ Used to take step U3 of the updating procedure [HZ, p.123]. The other steps
 are in update, but this step is separated out to be able to use it in
 step B2 of bracket.
 """
-function _U3(hzl::HZAW, φ, a::T, b::T, c::T, φ0, ϵk) where T
+function _U3(hzl::HZAW, φ, a::T, b::T, c::T, ϵk) where T
   # verified against paper description [p. 123, CG_DESCENT_851]
+  φ0 = φ.φ0
   _a, _b = a, c
   # a)
   searching = true
@@ -131,7 +132,7 @@ function update(hzl::HZ,
       return c, b, (a=true, b=false)
     end
     #== U3 ==#
-    a, b = _U3(hzl, φ, a, b, c, φ0, ϵk)
+    a, b = _U3(hzl, φ, a, b, c, ϵk)
     return a, b, (a=a==c, b=b==c)
   end
 end
@@ -167,7 +168,7 @@ function bracket(hzl::HZAW, c::T, φ, ϵk, ρ) where T
       #== B2 : φ is decreasing at cj but function value is sufficiently larger than
       # φ0, use U3 to update. ==#
       if φcj > φ0 + ϵk
-        a, b = _U3(hzl, φ, T(0), cj, c, φ0, ϵk)
+        a, b = _U3(hzl, φ, T(0), cj, c, ϵk)
         return a, b
       end
       #== B3 ==#

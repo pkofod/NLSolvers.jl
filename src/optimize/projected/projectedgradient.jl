@@ -12,7 +12,7 @@ struct ConstantPDScaling{T} <: Scaling
 end
 scale(S::ConstantPDScaling, gx) = S.S\gx
 
-function update_xλ(prob::MinProblem, S::Scaling, λ, x, gx)
+function update_xλ(prob::OptimizationProblem, S::Scaling, λ, x, gx)
     bounds = bounds(prob)
     min.(max.(bounds.lower, x .- λ.*scale(S, gx)), bounds.upper)
 end
@@ -33,7 +33,7 @@ function sufficient_decrease(fλ, fx, λ, α, gx)
 end
 
 
-function projected_gradient(prob::MinProblem, f, g, x0, sc::Union{Scaling, NoScaling}=NoScaling(); itermax, ls_itermax, β=0.5, α=1e-6, print_trace=true)
+function projected_gradient(prob::OptimizationProblem, f, g, x0, sc::Union{Scaling, NoScaling}=NoScaling(); itermax, ls_itermax, β=0.5, α=1e-6, print_trace=true)
 
     f0, g0 = f(x0), g(x0)
     if norm(x0.-update_xλ(prob, sc, 1, x0, g0), Inf) <= 1e-6
