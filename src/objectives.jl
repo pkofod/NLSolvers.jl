@@ -1,4 +1,46 @@
 abstract type ObjWrapper end
+
+"""
+    ScalarObjective
+
+"""
+struct ScalarObjective{Tf, Tg, Tfg, Tfgh, Th, Thv, Tbf}
+    f::Tf
+    g::Tg
+    fg::Tfg
+    fgh::Tfgh
+    h::Th
+    hv::Thv
+    batched_f::Tbf
+end
+value(so::ScalarObjective, x) = so.f(x)
+# need fall back for the case where fgh is not there
+upto_gradient(so::ScalarObjective, x, ∇f) = so.fg(x, ∇f)
+upto_hessian(so::ScalarObjective, x, ∇f, ∇²f) = so.fgh(x, ∇f, ∇²f)
+has_batched_f(so::ScalarObjective) = !(so.batched_f === nothing)
+"""
+    batched_value(obj, X)
+
+Return the objective evaluated at all elements of X. If obj contains
+a batched_f it will have X passed collectively, else f will be broadcasted
+across the elements of X.
+"""
+function batched_value(obj::ScalarObjective, X)
+    if has_batched_f(obj)# add 
+      return obj.batched_f(X)
+    else
+      return obj.f.(X)
+    end
+  end
+  function batched_value(obj::ScalarObjective, F, X)
+    if has_batched_f(obj)# add 
+        F = obj.batched_f(F, X)
+    else
+        F .= obj.f.(X)
+    end
+    F
+end
+
 ########
 ## C⁰ ##
 ########
@@ -46,74 +88,53 @@ end
 (td::TwiceDiffed)(x, ∇f, ∇²f) = td.obj(x, ∇f, ∇²f)
 
 
-struct LineObjective!{TP, T1, T2, T3, T4, T5}
+## If prob is a NEqProblem, then we can just dispatch to least squares MeritObjective
+# if fast JacVec exists then maybe even line searches that updates the gradient can be used??? 
+struct LineObjective!{TP, T1, T2, T3}
     prob::TP
-    obj::T1
-    ∇fz::T2
-    z::T3
-    x::T3
-    d::T4
-    φ0::T5
-    dφ0::T5
+    ∇fz::T1
+    z::T2
+    x::T2
+    d::T2
+    φ0::T3
+    dφ0::T3
 end
-(le::LineObjective!)(λ)=(le.obj(retract!(_manifold(le.prob), le.z, le.x, le.d, λ)))
+(le::LineObjective!)(λ)=value(le.prob, retract!(_manifold(le.prob), le.z, le.x, le.d, λ))
 function (le::LineObjective!)(λ, calc_grad::Bool)
-    f, g = (le.obj(retract!(_manifold(le.prob), le.z, le.x, le.d, λ), le.∇fz))
+    f, g = upto_gradient(le.prob, retract!(_manifold(le.prob), le.z, le.x, le.d, λ), le.∇fz)
     f, dot(g, le.d)
 end
-struct LineObjective{TP, T1, T2, T3, T4, T5}
+struct LineObjective{TP, T1, T2, T3}
     prob::TP
-    obj::T1
-    ∇fz::T2
-    z::T3
-    x::T3
-    d::T4 # could be T3 i believe
-    φ0::T5
-    dφ0::T5
+    ∇fz::T1
+    z::T2
+    x::T2
+    d::T2
+    φ0::T3
+    dφ0::T3
 end
-(le::LineObjective)(λ)=(le.obj(retract(_manifold(le.prob), le.x, le.d, λ)))
+(le::LineObjective)(λ)=value(le.prob, retract(_manifold(le.prob), le.x, le.d, λ))
 function (le::LineObjective)(λ, calc_grad::Bool)
-    f, g = le.obj(retract(_manifold(le.prob), le.x, le.d, λ), le.∇fz)
+    f, g = upto_gradient(le.prob, retract(_manifold(le.prob), le.x, le.d, λ), le.∇fz)
     f, dot(g, le.d)
 end
 
 # We call real on dφ0 because x and df might be complex
-_lineobjective(mstyle::InPlace, prob::AbstractProblem, obj::ObjWrapper, ∇fz, z, x, d, φ0, dφ0) = LineObjective!(prob, obj, ∇fz, z, x, d, φ0, real(dφ0))
-_lineobjective(mstyle::OutOfPlace, prob::AbstractProblem, obj::ObjWrapper, ∇fz, z, x, d, φ0, dφ0) = LineObjective(prob, obj, ∇fz, z, x, d, φ0, real(dφ0))
+_lineobjective(mstyle::InPlace, prob::AbstractProblem, ∇fz, z, x, d, φ0, dφ0) = LineObjective!(prob, ∇fz, z, x, d, φ0, real(dφ0))
+_lineobjective(mstyle::OutOfPlace, prob::AbstractProblem, ∇fz, z, x, d, φ0, dφ0) = LineObjective(prob, ∇fz, z, x, d, φ0, real(dφ0))
 
-struct MeritObjective{TP, T1, T2, T3, T4}
+struct MeritObjective{TP, T1, T2, T3, T4, T5}
   prob::TP
   F::T1
-  Fx::T2
-  Jx::T3
-  d::T4
+  FJ::T2
+  Fx::T3
+  Jx::T4
+  d::T5
 end
-function (mo::MeritObjective)(x)
-  Fx = mo.F(x, mo.Fx, nothing) # FIXME FIXME should not have to include J here
+function value(mo::MeritObjective, x)
+  Fx = mo.F(x, mo.Fx)
   (norm(Fx)^2)/2
 end
-function (mo::MeritObjective)(x, calc_grad::Bool)
-  Fx, Jx = mo.F(x, mo.Fx, mo.Jx) # FIXME FIXME should not have to include J here
-  (norm(Fx)^2)/2, dot(Fx, Jx*mo.d)
-end
-# (_y,_x)->norm(F(_x, Fx, Jx)[1])^2)
-struct Batched{T<:ObjWrapper}
-  obj::T
-end
-isbatched(obj) = false
-isbatched(obj::Batched) = true
-function batched_value(prob, F, X)
-  if isbatched(prob.objective)
-
-    prob.objective.obj.obj(F, X)
-  else
-    for i in eachindex(F, X)
-      @inbounds F[i] = prob.objective(X[i])
-    end 
-  end
-  F
-end
-(odbo::Batched)(args...) = odbo.obj(args...)
 
 struct LsqWrapper{Tobj, TF, TJ} <: ObjWrapper
   R::Tobj

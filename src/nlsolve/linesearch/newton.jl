@@ -1,83 +1,81 @@
-function solve!(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Static(1)), options=NEqOptions())
-  t0 = time()
-  F = prob.R
-  scheme, linesearch = modelscheme(method), algorithm(method)
-
-  z, d, Fx, Jx = copy(x), copy(x), copy(x), x*x'
-
-  Fx, Jx = F(x, Fx, Jx)
-  ρF0 = norm(Fx, Inf)
-  ρ2F0 = norm(Fx, 2)
-  T = typeof(ρF0)
-  stoptol = T(options.f_reltol)*ρF0 + T(options.f_abstol)
-  if ρF0 < stoptol
-    return x, Fx, 0
-  end
-  ρs = ρF0
-  iter = 1
-  while iter ≤ options.maxiter
-    x .= z
-    # Update the point of evaluation
-    d = scheme.linsolve(d, Jx, -Fx)
-
-    merit = MeritObjective(prob, F, Fx, Jx, d)
-    # φ = LineObjective!(F, ∇fz, z, x, d, fx, dot(∇fx, d))
-    # Need to restrict to static and backtracking here
-    φ = LineObjective(prob, merit, nothing, z, x, d, (ρF0^2)/2, -ρF0^2)
-
-    # Perform line search along d
-    α, f_α, ls_success = find_steplength(InPlace(), linesearch, φ, T(1.0))
-
-    z .= x .+ α.*d
-    Fx, Jx = F(x, Fx, Jx)
-    ρF = norm(Fx, 2)
-    ρs = norm(x.-z, Inf)
-    if ρF < stoptol #|| ρs <= 1e-12
-        break
-    end
-    iter += 1
-  end
-  ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, ρs=ρs, iter=iter, time=time()-t0), options)
-end
+# make this keyworded?
 init(::NEqProblem, ::LineSearch, x) = (z=copy(x), d=copy(x), Fx=copy(x), Jx=x*x')
-function solve(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Static(1)), options=NEqOptions(), cache=init(prob, method, x))
-  t0 = time()
-  F = prob.R
-  scheme, linesearch = modelscheme(method), algorithm(method)
+# the bang is just potentially inplace x and state. nonbang copies these
+function solve!(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Static(1)), options=NEqOptions(), state=init(prob, method, x))
+    t0 = time()
+    iip = is_inplace(prob)
+    # Unpack important objectives
+    F = prob.R.F
+    FJ = prob.R.FJ
 
-  z, d, Fx, Jx = cache
+    # Unpack method
+    scheme, linesearch = modelscheme(method), algorithm(method)
 
-  Fx, Jx = F(x, Fx, Jx)
-  ρF0 = norm(Fx, Inf)
-  ρ2F0 = norm(Fx, 2)
-  T = typeof(ρF0)
-  stoptol = T(options.f_reltol)*ρF0 + T(options.f_abstol)
-  if ρF0 < stoptol
-    return x, Fx, 0
-  end
-  ρs = ρF0
-  iter = 1
-  while iter ≤ options.maxiter
-    x .= z
-    # Update the point of evaluation
-    d = scheme.linsolve(d, Jx, -Fx)
+    z, d, Fx, Jx = state
+    T = eltype(Fx)
 
-    merit = MeritObjective(prob, F, Fx, Jx, d)
-    # φ = LineObjective!(F, ∇fz, z, x, d, fx, dot(∇fx, d))
-    # Need to restrict to static and backtracking here
-    φ = LineObjective(prob, merit, nothing, z, x, d, (ρF0^2)/2, -ρF0^2)
+    # Set up MeritObjective. This defines the least squares
+    # objective for the line search.
+    merit = MeritObjective(prob, F, FJ, Fx, Jx, d)
+    meritproblem = OptimizationProblem(merit)
+    # Evaluate the residual and Jacobian
+    Fx, Jx = FJ(x, Fx, Jx)
+    ρF0, ρ2F0 = norm(Fx, Inf),  norm(Fx, 2)
 
-    # Perform line search along d
-    α, f_α, ls_success = find_steplength(InPlace(), linesearch, φ, T(1.0))
-
-    z .= x .+ α.*d
-    Fx, Jx = F(x, Fx, Jx)
-    ρF = norm(Fx, 2)
-    ρs = norm(x.-z, Inf)
-    if ρF < stoptol #|| ρs <= 1e-12
-        break
+    stoptol = T(options.f_reltol)*ρF0 + T(options.f_abstol)
+    if ρF0 < stoptol
+        return x, Fx, 0
     end
-    iter += 1
-  end
-  ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, ρs=ρs, iter=iter, time=time()-t0), options)
+
+    # Create variable for norms but keep the first ones for printing purposes.
+    ρs, ρ2F = ρF0, ρ2F0
+
+    iter = 1
+    while iter ≤ options.maxiter
+        # Shift z into x
+        x .= z
+
+        # Update the search direction
+        d = scheme.linsolve(d, Jx, -Fx)
+
+        # Need to restrict to static and backtracking here because we don't allow
+        # for methods that calculate the gradient of the line objective.
+        #
+        # For non-linear systems of equations we choose the sum-of-
+        # squares merit function. Some useful things to remember is:
+        #
+        # f(y) = 1/2*|| F(y) ||^2 =>
+        # ∇_df = -d'*J(x)'*F(x)
+        #
+        # where we remember the notation x means the current iterate and y is any
+        # proposal. This means that if we step in the Newton direction such that d
+        # is defined by
+        #
+        # J(x)*d = -F(x) => -d'*J(x)' = F(x)' =>
+        # ∇_df = -F(x)'*F(x) = -f(x)*2
+        #
+        # φ = LineObjective!(F, ∇fz, z, x, d, fx, dot(∇fx, d))
+        φ = LineObjective(meritproblem, z, z, x, d, (ρ2F^2)/2, -ρ2F^2)
+
+        # Perform line search along d
+        α, f_α, ls_success = find_steplength(InPlace(), linesearch, φ, T(1.0))
+
+        # Step in the direction α*d
+        z .= x .+ α.*d
+
+        # Update residual and jacobian
+        Fx, Jx = FJ(z, Fx, Jx)
+
+        # Update 2-norm for line search conditions: ϕ(0) and ϕ'(0)
+        ρ2F = norm(Fx, 2)
+
+        # Update the largest successive change in the iterate
+        ρs = mapreduce(x->abs(x[1]-x[2]), max, zip(x,z)) # norm(x.-z, Inf)
+
+        if ρ2F < stoptol || ρs <= 1e-12
+            break
+        end
+        iter += 1
+    end
+    return ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, ρs=ρs, iter=iter, time=time()-t0), options)
 end

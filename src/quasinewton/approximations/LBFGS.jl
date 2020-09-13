@@ -51,9 +51,9 @@ function find_direction!(scheme::LBFGS{<:Inverse, <:TwoLoop}, q,
     # Negate search direction
     negate!(d)
 end
-function update_obj!(objective, qnvars, α, x, ∇fx, z, ∇fz, current_memory, scheme::LBFGS{<:Inverse, <:TwoLoop}, scale=nothing)
+function update_obj!(problem, qnvars, α, x, ∇fx, z, ∇fz, current_memory, scheme::LBFGS{<:Inverse, <:TwoLoop}, scale=nothing)
     # Calculate final step vector and update the state
-    fz, ∇fz = objective(z, ∇fz)
+    fz, ∇fz = upto_gradient(problem, z, ∇fz)
     # add Project gradient
 
     # Quasi-Newton update

@@ -33,14 +33,12 @@ function PureRandomSearch(; draw=nothing, lb=nothing, ub=nothing)
     end
     PureRandomSearch(_draw)
 end
-minimize!(objective, prs::PureRandomSearch, options=MinOptions()) =
-  minimize(objective, prs::PureRandomSearch, options)
-function minimize(objective, prs::PureRandomSearch, options=MinOptions())
+function solve(prob, prs::PureRandomSearch, options)
     xbest = prs.draw()
-    fbest = objective(xbest)
+    fbest = value(prob, xbest)
     for i = 1:options.maxiter
         xcandidate = prs.draw(xbest)
-        fcandidate = objective(xcandidate)
+        fcandidate = value(prob, xcandidate)
         if fcandidate ≤ fbest
             fbest = fcandidate
             xbest = copy(xcandidate)

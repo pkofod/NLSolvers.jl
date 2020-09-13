@@ -52,7 +52,7 @@ struct EisenstatWalkerB{T} <: ForcingSequence
     γ::T
     ηmax::T
 end
-EisenstatWalkerB() = EisenstatWalkerB(0.1, 1+sqrt(5)/2, 1.0)
+EisenstatWalkerB() = EisenstatWalkerB(0.1, 1+sqrt(5)/2, 1.0, 100.0)
 
 struct BrownSaad{T}
 
@@ -88,7 +88,7 @@ struct InexactNewton{ForcingType<:ForcingSequence, Tη}
     η₀::Tη
     maxiter::Int
 end
-#InexactNewton(; force_seq=FixedForceTerm(1e-4), eta0 = 1e-4, maxiter=300)=InexactNewton(force_seq, eta0, maxiter)
+#InexactNewton(; force_seq=FixedForceTinexacerm(1e-4), eta0 = 1e-4, maxiter=300)=InexactNewton(force_seq, eta0, maxiter)
 InexactNewton(; force_seq=DemboSteihaug(), eta0 = 1e-4, maxiter=300)=InexactNewton(force_seq, eta0, maxiter)
 # map from method to forcing sequence
 η(fft::InexactNewton, info) = η(fft.force_seq, info)
@@ -96,15 +96,19 @@ InexactNewton(; force_seq=DemboSteihaug(), eta0 = 1e-4, maxiter=300)=InexactNewt
 
 function solve!(prob::NEqProblem, x, method::InexactNewton, options::NEqOptions)
     t0 = time()
+
+    F = prob.R.F
+    JvGen = prob.R.Jv
+
     Tx = eltype(x)
     xp, Fx = copy(x), copy(x)
+    Fx = F(x, Fx)
+    JvOp = JvGen(x)
 
-    Fx = prob.R(x, Fx)
     ρ2F0 = norm(Fx, 2)
     ρFz = ρ2F0
     ρF0 = norm(Fx, Inf)
     ρs = norm(x, 2)
-    JvOp = prob.Jv(x)
     z = copy(x)
     stoptol = Tx(options.f_reltol)*ρFz + Tx(options.f_abstol)
 
@@ -122,12 +126,12 @@ function solve!(prob::NEqProblem, x, method::InexactNewton, options::NEqOptions)
            ηₖ = η(method, force_info)
         end
 
-        JvOp = prob.Jv(x)
+        JvOp = JvGen(x)
 
         xp .= 0
         krylov_iter = IterativeSolvers.gmres_iterable!(xp, JvOp, Fx; maxiter=50)
         local res
-        rhs = ηₖ*norm(Fx)
+        rhs = ηₖ*norm(Fx, 2)
         for item in krylov_iter
             res = krylov_iter.residual.current
             if res <= rhs
@@ -146,7 +150,7 @@ function solve!(prob::NEqProblem, x, method::InexactNewton, options::NEqOptions)
         while !btk_conv
             it += 1
             @. z = x - xp
-            Fx = prob.R(z, Fx)
+            Fx = prob.R.F(z, Fx)
             btk_conv = norm(Fx, 2) ≤ (1-t*(1-ηₖ))*ρFx || it > 20
         end
         if norm(Fx, 2) < stoptol

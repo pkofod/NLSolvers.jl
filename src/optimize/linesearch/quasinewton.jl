@@ -12,39 +12,25 @@ function preallocate_qn_caches_inplace(x0)
     return cache
 end
 
-function minimize(obj::ObjWrapper, x0, approach::LineSearch, options::MinOptions)
-    _minimize(OutOfPlace(), MinProblem(;obj=obj), (x0, nothing), approach, options, nothing)
+function solve(prob::OptimizationProblem, x0, approach::LineSearch, options::MinOptions)
+    _solve(OutOfPlace(), prob, (x0, nothing), approach, options, nothing)
 end
-function minimize(obj::ObjWrapper, s0::Tuple, approach::LineSearch, options::MinOptions)
-    _minimize(OutOfPlace(), MinProblem(obj), s0, approach, options, nothing)
-end
-
-function minimize!(obj::ObjWrapper, x0, approach::LineSearch, options::MinOptions, cache=QNVars(x0, x0))
-    _minimize(InPlace(), MinProblem(;obj=obj), (x0, nothing), approach, options, cache)
-end
-function minimize!(obj::ObjWrapper, s0::Tuple, approach::LineSearch, options::MinOptions, cache=QNVars(first(s0), first(s0)))
-    _minimize(InPlace(), MinProblem(obj), s0, approach, options, cache)
+function solve(prob::OptimizationProblem, s0::Tuple, approach::LineSearch, options::MinOptions)
+    _solve(OutOfPlace(), prob, s0, approach, options, nothing)
 end
 
-function solve(obj::ObjWrapper, x0, approach::LineSearch, options::MinOptions)
-    _minimize(OutOfPlace(), MinProblem(;obj=obj), (x0, nothing), approach, options, nothing)
+function solve!(prob::OptimizationProblem, x0, approach::LineSearch, options::MinOptions, cache=QNVars(x0, x0))
+    _solve(InPlace(), prob, (x0, nothing), approach, options, cache)
 end
-function solve(obj::ObjWrapper, s0::Tuple, approach::LineSearch, options::MinOptions)
-    _minimize(OutOfPlace(), MinProblem(obj), s0, approach, options, nothing)
-end
-function solve(prob::MinProblem, x0, approach::LineSearch, options::MinOptions)
-    _minimize(OutOfPlace(), prob, (x0, nothing), approach, options, nothing)
-end
-function solve(prob::MinProblem, s0::Tuple, approach::LineSearch, options::MinOptions)
-    _minimize(OutOfPlace(), prob, s0, approach, options, nothing)
+function solve!(prob::OptimizationProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache=QNVars(first(s0), first(s0)))
+    _solve(InPlace(), prob, s0, approach, options, cache)
 end
 
-function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache)
+function _solve(mstyle, prob::OptimizationProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache)
 #    global_logger(options.logger)
 
     t0 = time()
 
-    obj = prob.objective
     #==============
          Setup
     ==============#
@@ -57,14 +43,14 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, op
 
     if any(initial_converged(approach, objvars, ∇f0, options))
         x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
-        return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=0, time=time()-t0), options)
+        return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), solver=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=0, time=time()-t0), options)
     end
     qnvars = QNVars(copy(objvars.∇fz), copy(objvars.∇fz), copy(objvars.∇fz))
 
     #==============================
              First iteration
     ==============================#
-    objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, prob, obj, options)
+    objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, prob, options)
     iter = 1
     # Check for gradient convergence
     is_converged = converged(approach, objvars, ∇f0, options)
@@ -74,7 +60,7 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, op
         #==============================
                      iterate
         ==============================#
-        objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, prob, obj, options, false)
+        objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, prob, options, false)
         #==============================
                 check convergence
         ==============================#
@@ -82,14 +68,14 @@ function _minimize(mstyle, prob::MinProblem, s0::Tuple, approach::LineSearch, op
         print_trace(approach, options, iter, t0, objvars)
     end
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
-    return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
+    return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), solver=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
 function print_trace(approach::LineSearch, options, iter, t0, objvars)
     if !isa(options.logger, NullLogger) 
        println(@sprintf("iter: %d   time: %.4f   obj: %.4e   ||∇f||: %.4e    α: %.4e", iter, time()-t0, objvars.fz, norm(objvars.∇fz, Inf), objvars.α))
     end
 end
-function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, prob::MinProblem, obj::ObjWrapper, options::MinOptions, is_first=nothing)
+function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, problem::OptimizationProblem, options::MinOptions, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
 
@@ -107,7 +93,7 @@ function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, prob:
     P = update_preconditioner(scheme, x, P)
     # Update current gradient and calculate the search direction
     d = find_direction!(d, B, P, ∇fx, scheme) # solve Bd = -∇fx
-    φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
+    φ = _lineobjective(mstyle, problem, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # Perform line search along d
     # Also returns final step vector and update the state
@@ -115,9 +101,8 @@ function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, prob:
 
     @. s = α * d
     @. z = x + s
-
     # Update approximation
-    fz, ∇fz, B, s, y = update_obj!(obj, s, y, ∇fx, z, ∇fz, B, scheme, is_first)
+    fz, ∇fz, B, s, y = update_obj!(problem, s, y, ∇fx, z, ∇fz, B, scheme, is_first)
     return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=B, Pg=Pg, α=α), P, QNVars(d, s, y)
 end
 function print_trace(approach::LineSearch, options, iter, t0, objvars, Δ)
@@ -126,7 +111,7 @@ function print_trace(approach::LineSearch, options, iter, t0, objvars, Δ)
     end
 end
 
-function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch, prob::MinProblem, obj::ObjWrapper, options::MinOptions, is_first=nothing)
+function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch, prob::OptimizationProblem, options::MinOptions, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     Tf = typeof(fx)

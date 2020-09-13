@@ -14,23 +14,33 @@ The package NLSolversAD.jl adds automatic conversion of problems to match algori
 that require higher order derivates than provided by the user. It also adds AD
 constructors for a target number of derivatives.
 """
-struct NEqProblem{TR, TJv, Tb, Tm<:Manifold}
+struct NEqProblem{IIP, TR, Tb, Tm<:Manifold}
   R::TR
-  Jv::TJv
   bounds::Tb
   manifold::Tm
 end
-NEqProblem(residuals) = NEqProblem(residuals, nothing, nothing, Euclidean(0))
+NEqProblem(residuals) = NEqProblem{true, typeof(residuals), Nothing, typeof(Euclidean(0))}(residuals, nothing, Euclidean(0))
 _manifold(prob::NEqProblem) = prob.manifold
+is_inplace(::NEqProblem{false}) = false
+is_inplace(::NEqProblem{true}) = true
 
-function value(nleq::NEqProblem, x)
-    nleq.R(x)
+#function value(nleq::NEqProblem, x)
+#    nleq.R(x)
+#end
+function value(nleq::NEqProblem, x, F)
+    value(nleq.R, x, F)
 end
-function value(nleq::NEqProblem{<:NonDiffed, <:Any, <:Any}, x, F)
-    nleq.R(x, F)
+struct NEqObjective{TF, TJ, TFJ, TJv}
+  F::TF
+  J::TJ
+  FJ::TFJ
+  Jv::TJv
 end
-function value(nleq::NEqProblem{<:Any, <:Any, <:Any}, x, F)
-    nleq.R(x, F, nothing)
+function value(nleq::NEqObjective, x, F)
+  nleq.F(x, F)
+end
+function value_jacobian!(nleq::NEqProblem{<:NEqObjective, <:Any, <:Any}, x, F, J)
+  nleq.FJ(x, F, J)
 end
 
 """
@@ -48,7 +58,6 @@ struct NEqOptions{T, Tmi}
   maxiter::Tmi
 end
 NEqOptions(; f_limit=0.0, f_abstol=1e-8, f_reltol=1e-12, maxiter=10^4) = NEqOptions(f_limit, f_abstol, f_reltol, maxiter)
-
 function Base.show(io::IO, ci::ConvergenceInfo{<:Any, <:Any, <:NEqOptions})
   opt = ci.options
   info = ci.info

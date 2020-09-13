@@ -34,11 +34,10 @@ struct CGVars{T1, T2, T3}
     ls_success::Bool
 end
 
-function prepare_variables(objective, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, x0, ∇fz)
+function prepare_variables(problem, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, x0, ∇fz)
     z = x0
     x = copy(z)
-
-    fz, ∇fz = objective(x, ∇fz)
+    fz, ∇fz = upto_gradient(problem, x, ∇fz)
 
     fx = copy(fz)
     ∇fx = copy(∇fz)
@@ -71,7 +70,6 @@ function update_parameter(mstyle, cg::HZ, d, ∇fz, ∇fx, y, P, P∇fz)
     T = eltype(∇fz)
     θ = T(2)
     η = T(cg.η)
-
     # βHS = update_parameter(mstyle, HS(), d,  ∇fz, ∇fx, y, P, P∇fz)
     # but let's save the dy calculation from begin repeated for
     # efficiency's sake        
@@ -79,11 +77,11 @@ function update_parameter(mstyle, cg::HZ, d, ∇fz, ∇fx, y, P, P∇fz)
     βHS = dot(y, P∇fz)/dy
 
     # Apply preconditioner to y
-    Py = apply_preconditioner(mstyle, P, P∇fz, y)
+    Py = apply_preconditioner(mstyle, P, copy(P∇fz), y)
     βN = βHS - θ*dot(y, Py)/dy*dot(d, ∇fz)/dy
     
     # 2013 version is scale invariant
-    Pinv_y = apply_inverse_preconditioner(mstyle, P, P∇fz, y)
+    Pinv_y = apply_inverse_preconditioner(mstyle, P, copy(P∇fz), y)
     ηk = η*dot(d, ∇fx)/dot(d, Pinv_y)
     # 2006 version
     # ηk = -inv(norm(d)*min(T(cg.η), norm(∇fx)))
@@ -188,46 +186,42 @@ end
 
 
 # using an "initial vectors" function we can initialize s if necessary or nothing if not to save on vectors
-minimize!(obj::ObjWrapper, x0, cg::ConjugateGradient, options::MinOptions) =
-  _solve(MinProblem(;obj=obj), x0, LineSearch(cg, HZAW()), options, InPlace())
-minimize!(obj::ObjWrapper, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) =
-  _solve(MinProblem(;obj=obj), x0, approach, options, InPlace())
-minimize(obj::ObjWrapper, x0, cg::ConjugateGradient, options::MinOptions) =
-  _solve(MinProblem(;obj=obj), x0, LineSearch(cg, HZAW()), options, OutOfPlace())
-minimize(obj::ObjWrapper, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) =
-  _solve(MinProblem(;obj=obj), x0, approach, options, OutOfPlace())
+function solve!(problem::OptimizationProblem, x0, cg::ConjugateGradient, options::MinOptions)
 
-solve(prob::MinProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) = _solve(prob, x0, approach, options, OutOfPlace())
-solve!(prob::MinProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) = _solve(prob, x0, approach, options, InPlace())
-function _solve(prob::MinProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions, mstyle::MutateStyle)
+  _solve(problem, x0, LineSearch(cg, HZAW()), options, InPlace())
+end
+solve!(problem::OptimizationProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) =
+  _solve(problem, x0, approach, options, InPlace())
+solve(problem::OptimizationProblem, x0, cg::ConjugateGradient, options::MinOptions) =
+  _solve(problem, x0, LineSearch(cg, HZAW()), options, OutOfPlace())
+solve(problem::OptimizationProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) =
+  _solve(problem, x0, approach, options, OutOfPlace())
+
+function _solve(problem::OptimizationProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions, mstyle::MutateStyle)
     t0 = time()
-    #==============
-         unpack
-    ==============#
-    obj = prob.objective
     #==============
          Setup
     ==============#
     Tx = eltype(x0)
 
-    objvars = prepare_variables(obj, approach, x0, copy(x0))
+    objvars = prepare_variables(problem, approach, x0, copy(x0))
     f0, ∇f0 = objvars.fx, norm(objvars.∇fx, Inf) # use user norm
 
     y, d, α, β = copy(objvars.∇fz), -copy(objvars.∇fx), Tx(0), Tx(0)
     cgvars = CGVars(y, d, α, β, true)
 
     k = 1
-    objvars, P, cgvars = iterate(mstyle, cgvars, objvars, approach, prob, obj, options)
+    objvars, P, cgvars = iterate(mstyle, cgvars, objvars, approach, problem, options)
     is_converged = converged(approach, objvars, ∇f0, options)
     while k < options.maxiter && !any(is_converged)
         k += 1
-        objvars, P, cgvars = iterate(mstyle, cgvars, objvars, approach, prob, obj, options, P, false)
+        objvars, P, cgvars = iterate(mstyle, cgvars, objvars, approach, problem, options, P, false)
         is_converged = converged(approach, objvars, ∇f0, options) 
     end
     x, fx, ∇fx, z, fz, ∇fz, B = objvars
-    return ConvergenceInfo(approach, (beta=β, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fx=∇fx, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=k, time=time()-t0), options)
+    return ConvergenceInfo(approach, (beta=β, ρs=norm(x.-z), ρx=norm(x), solver=z, fx=fx, minimum=fz, ∇fx=∇fx, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=k, time=time()-t0), options)
 end
-function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, prob::MinProblem, obj::ObjWrapper, options::MinOptions, P=nothing, is_first=nothing)
+function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, problem::OptimizationProblem, options::MinOptions, P=nothing, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     Tx = eltype(x)
@@ -246,22 +240,22 @@ function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{
     # Update current gradient and calculate the search direction
     @. d = -P∇fz + β*d
 
-    α_0 = initial(scheme.update, a-> obj(x.+a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
-    φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
+    α_0 = initial(scheme.update, a->value(problem, x.+a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
+    φ = _lineobjective(mstyle, problem, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # Perform line search along d
     α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tx(1))
 
     # Calculate final step vector and update the state
     @. z = x + α*d
-    fz, ∇fz = obj(z, ∇fz)
+    fz, ∇fz = upto_gradient(problem, z, ∇fz)
     @. y = ∇fz - ∇fx
     β = update_parameter(mstyle, scheme.update, d, ∇fz, ∇fx, y, P, P∇fz)
 
     return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=nothing, Pg=Pg), P, CGVars(y, d, α, β, ls_success)
 end
 
-function iterate(mstyle::OutOfPlace, cgvars::CGVars, objvars, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, prob::MinProblem, obj::ObjWrapper, options::MinOptions, P=nothing, is_first=nothing)
+function iterate(mstyle::OutOfPlace, cgvars::CGVars, objvars, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, problem::OptimizationProblem, options::MinOptions, P=nothing, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     Tx = eltype(x)
@@ -279,17 +273,16 @@ function iterate(mstyle::OutOfPlace, cgvars::CGVars, objvars, approach::LineSear
     # Update current gradient and calculate the search direction
     d = @. -P∇fz + β*d
 
-    α_0 = initial(scheme.update, a-> obj(x .+ a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
-    φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
+    α_0 = initial(scheme.update, a-> value(problem, x .+ a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
+    φ = _lineobjective(mstyle, problem, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # Perform line search along d
     α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tx(1))
 
     z = @. x + α*d
-    fz, ∇fz = obj(z, ∇fz)
+    fz, ∇fz = upto_gradient(problem, z, ∇fz)
     y = @. ∇fz - ∇fx
     β = update_parameter(mstyle, scheme.update, d, ∇fz, ∇fx, y, P, P∇fz)
-
     return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=nothing, Pg=Pg), P, CGVars(y, d, α, β, ls_success)
 end
 

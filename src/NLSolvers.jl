@@ -70,7 +70,7 @@ include("precondition.jl")
 include("Manifolds.jl")
 include("objectives.jl")
 include("linearalgebra.jl")
-export NonDiffed, OnceDiffed, TwiceDiffed
+export NonDiffed, OnceDiffed, TwiceDiffed, ScalarObjective
 
 # make this struct that has scheme and approx
 abstract type QuasiNewton{T1} end
@@ -82,7 +82,7 @@ struct Direct <: HessianApproximation end
 export Inverse, Direct
 # problem and options types
 include("optimize/problem_types.jl")
-export MinProblem, MinOptions
+export OptimizationProblem, MinOptions
 # Globalization strategies
 # TODO:
 

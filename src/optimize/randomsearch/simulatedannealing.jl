@@ -35,14 +35,14 @@ function default_neighbor(x_best)
   return x_best .+ T.(RandomNumbers.randn(n))
 end
 
-minimize!(objective::ObjWrapper, x0, method::SimulatedAnnealing, options::MinOptions) =
-  minimize(objective::ObjWrapper, x0, method::SimulatedAnnealing, options::MinOptions)
-function minimize(objective::ObjWrapper, x0, method::SimulatedAnnealing, options::MinOptions)
+solve!(prob::OptimizationProblem, x0, method::SimulatedAnnealing, options::MinOptions) =
+  solve(prob::OptimizationProblem, x0, method::SimulatedAnnealing, options::MinOptions)
+function solve(prob::OptimizationProblem, x0, method::SimulatedAnnealing, options::MinOptions)
   T = eltype(x0)
   t0 = time()
 
   x_best = copy(x0)
-  f_best = objective(x_best)
+  f_best = value(prob, x_best)
   x_now = copy(x0)
   f_now = f_best
   f0 = f_now
@@ -58,7 +58,7 @@ function minimize(objective::ObjWrapper, x0, method::SimulatedAnnealing, options
     x_candidate = method.neighbor(x_best)
 
     # Evaluate the cost function at the proposed state
-    f_candidate = objective(x_candidate)
+    f_candidate = value(prob, x_candidate)
 
     if f_candidate <= f_now # this handles non-finite values as well
       # If proposal is superior, we always move to it
@@ -81,7 +81,7 @@ function minimize(objective::ObjWrapper, x0, method::SimulatedAnnealing, options
     is_converged = converged(method, f_now, options)
   end
 
-  ConvergenceInfo(method, (minimizer=x_best, minimum=f_best, f_now=f_now, x_now=x_now, temperature=temperature, f0=f0, iter=iter, time=time()-t0), options)
+  ConvergenceInfo(method, (solver=x_best, minimum=f_best, f_now=f_now, x_now=x_now, temperature=temperature, f0=f0, iter=iter, time=time()-t0), options)
 end
 function converged(method::SimulatedAnnealing, fz, options)
   f_converged = false

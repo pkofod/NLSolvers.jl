@@ -1,6 +1,6 @@
 """
-  MinProblem(...)
-A MinProblem (Minimization Problem), is used to represent the mathematical problem
+  OptimizationProblem(...)
+A OptimizationProblem (Minimization Problem), is used to represent the mathematical problem
 of finding local minima of the given objective function. The problem is defined by `objective`
 which is an appropriate objective type (for example `NonDiffed`, `OnceDiffed`, ...)
 for the types of algorithm to be used. The constraints of the problem are encoded
@@ -11,30 +11,35 @@ are bounds constraints and manifold constraints on the inputs.
 Options are stored in `options` and must be an appropriate options type. See more information
 about options using `?MinOptions`.
 """
-struct MinProblem{O, THv, B, M<:Manifold, C} <: AbstractProblem
+struct OptimizationProblem{O, B, M<:Manifold, C, X} <: AbstractProblem
     objective::O
-    Hv::THv
     bounds::B
     manifold::M
     constraints::C
+    initial_x::X
 end
-_manifold(prob::MinProblem) = prob.manifold
-lowerbounds(mp::MinProblem) = mp.bounds[1]
-upperbounds(mp::MinProblem) = mp.bounds[2]
-hasbounds(mp::MinProblem) = mp.bounds isa Tuple
-bounds(mp::MinProblem) = (lower=lowerbounds(mp), upper=upperbounds(mp))
-isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Any, <:Nothing}) = false
-isboundedonly(::MinProblem{<:Any, <:Any, <:Nothing, <:Any, <:Any}) = false
-isboundedonly(::MinProblem{<:Any, <:Any, <:Any, <:Any, <:Nothing}) = true
+value(prob::OptimizationProblem, x) = value(prob.objective, x)
+batched_value(prob::OptimizationProblem, X) = batched_value(prob.objective, X)
+batched_value(prob::OptimizationProblem, F, X) = batched_value(prob.objective, F, X)
+upto_gradient(prob::OptimizationProblem, x, ∇f) = upto_gradient(prob.objective, x, ∇f)
+upto_hessian(prob::OptimizationProblem, x, ∇f, ∇²f) = upto_hessian(prob.objective, x, ∇f, ∇²f)
+_manifold(prob::OptimizationProblem) = prob.manifold
+lowerbounds(mp::OptimizationProblem) = mp.bounds[1]
+upperbounds(mp::OptimizationProblem) = mp.bounds[2]
+hasbounds(mp::OptimizationProblem) = mp.bounds isa Tuple
+bounds(mp::OptimizationProblem) = (lower=lowerbounds(mp), upper=upperbounds(mp))
+isboundedonly(::OptimizationProblem{<:Any, <:Nothing, <:Any, <:Nothing}) = false
+isboundedonly(::OptimizationProblem{<:Any, <:Nothing, <:Any, <:Any}) = false
+isboundedonly(::OptimizationProblem{<:Any, <:Any, <:Any, <:Nothing}) = true
 
-value(p::MinProblem, args...) = p.objective(args...)
-constraints(p::MinProblem, args...) = p.constraints(args...)
-MinProblem(; obj=nothing, Hv=nothing, bounds=nothing, manifold=Euclidean(0), constraints=nothing) =
-  MinProblem(obj, Hv, bounds, manifold, constraints)
-MinProblem(obj) = MinProblem(obj, nothing, nothing, Euclidean(0), nothing)
+#value(p::OptimizationProblem, args...) = p.objective(args...)
+constraints(p::OptimizationProblem, args...) = p.constraints(args...)
+OptimizationProblem(; obj=nothing, bounds=nothing, manifold=Euclidean(0), constraints=nothing, initial_x=nothing) =
+  OptimizationProblem(obj, bounds, manifold, constraints, initial_x)
+OptimizationProblem(obj) = OptimizationProblem(obj, nothing, Euclidean(0), nothing, nothing)
 
-minimize!(obj, args...) = solve!(MinProblem(obj), args...)
-minimize(obj, args...) = solve(MinProblem(obj), args...)
+minimize!(obj, args...) = solve!(OptimizationProblem(obj), args...)
+minimize(obj, args...) = solve(OptimizationProblem(obj), args...)
 
 struct ConvergenceInfo{Ts, T, O}
   solver::Ts
@@ -103,7 +108,7 @@ function Base.show(io::IO, ci::ConvergenceInfo)
       end
     end
     if haskey(info, :prob) && hasbounds(info.prob)
-      if any(iszero, info.minimizer.-info.prob.bounds[1]) || any(iszero, info.minimizer.-info.minimizer[2])
+      if any(iszero, info.minimizer.-info.prob.bounds[1]) || any(iszero, info.prob.bounds[2].-info.minimizer)
         println(io, "\n  !!! Solution is at the boundary !!!")
       end
     end
@@ -199,9 +204,9 @@ function prepare_variables(prob, approach, x0, ∇fz, B)
     end
     # first evaluation
     if isa(modelscheme(approach), Newton)
-        fz, ∇fz, B = objective(x, ∇fz, B)
+        fz, ∇fz, B = upto_hessian(prob, x, ∇fz, B)
     else
-        fz, ∇fz = objective(x, ∇fz)
+        fz, ∇fz = upto_gradient(prob, x, ∇fz)
     end
     fx = copy(fz)
     ∇fx = copy(∇fz)

@@ -12,8 +12,9 @@ end
 # defaults for c's are from the flowchart of page 1370, σ's are from the bottom of 1370  
 APSO(; n_particles=nothing, limit_search_space=false, elitist_learning=true, c₁=2.0, c₂=2.0, σmin=0.1, σmax=1.0) = 
   APSO(n_particles, limit_search_space, elitist_learning, c₁, c₂, σmin, σmax)
-function minimize!(problem::MinProblem, x0, method::APSO, options::MinOptions)
-  n_particles = method.n_particles isa Nothing ? max(length(x0), 5) : method.n_particles
+function solve!(problem::OptimizationProblem, x0, method::APSO, options::MinOptions)
+    t0 = time()
+    n_particles = method.n_particles isa Nothing ? max(length(x0), 5) : method.n_particles
   lower, upper = lowerbounds(problem), upperbounds(problem)
 
   T, n = eltype(x0), length(x0)
@@ -40,10 +41,13 @@ function minimize!(problem::MinProblem, x0, method::APSO, options::MinOptions)
   end
 
   best_f = T(0)
+  swarm_f = best_f
+  f0 = swarm_f
   X_best[1] .= x0
   X[1] .= x0
-
-  for iter = 1:options.maxiter
+  iter = 0
+  while iter <= options.maxiter
+    iter += 1
     limit_X!(X, lower, upper)
   	Fs = batched_value(problem, Fs, X)
 
@@ -52,7 +56,9 @@ function minimize!(problem::MinProblem, x0, method::APSO, options::MinOptions)
       best_f = Base.minimum(Fs)
     end
     best_f = housekeeping!(Fs, Fs_best, X, X_best, x, best_f)
-
+    if iter == 1
+        f0 = best_f
+    end
     if method.elitist_learning # try to avoid non-global minima
       x_learn .= x
       # Perturb a random dimension and replace the current worst
@@ -86,6 +92,7 @@ function minimize!(problem::MinProblem, x0, method::APSO, options::MinOptions)
     update_swarm!(X, X_best, x, n, V, ω, c₁, c₂)
   end
   best_f, x
+  ConvergenceInfo(method, (swarm_f=swarm_f, X=X, Fs=Fs, minimizer=x, minimum=best_f, f0=f0, iter=iter, time=time()-t0), options)
 end
 
 function update_swarm!(X, X_best, best_point, n, V, ω, c₁, c₂)

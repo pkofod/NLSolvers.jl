@@ -137,13 +137,12 @@ struct ValuedSimplex{TS, TV, TO}
 end
 ValuedSimplex(S, V) = ValuedSimplex(S, V, sortperm(V))
 
-function solve!(prob::MinProblem, x0, method::NelderMead, options::MinOptions)
+function solve!(prob::OptimizationProblem, x0, method::NelderMead, options::MinOptions)
   solve!(prob, x0, method, ABA(x0.*0 .+ 1), options)
 end
-function solve!(prob::MinProblem, x0, method::NelderMead, as::AbstractSimplexer, options)
-    obj = prob.objective
+function solve!(prob::OptimizationProblem, x0, method::NelderMead, as::AbstractSimplexer, options)
     simplex_vector = initial_simplex(as, x0)
-    simplex_value = obj.(simplex_vector)
+    simplex_value = batched_value(prob, simplex_vector) # this could be batched
     order = sortperm(simplex_value)
     simplex = ValuedSimplex(simplex_vector, simplex_value, order)
     res = solve!(prob, simplex, method, options)
@@ -158,9 +157,8 @@ function NMCaches(simplex)
     return (x_reflect=x_reflect, x_cache=x_cache, x_centroid=x_centroid)
 end
 
-function solve!(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, options::MinOptions, nmcache=NMCaches(simplex))
+function solve!(prob::OptimizationProblem, simplex::ValuedSimplex, method::NelderMead, options::MinOptions, nmcache=NMCaches(simplex))
     global_logger(options.logger)
-    obj = prob.objective
     t0 = time()
     simplex_vector, simplex_value, i_order = simplex.S, simplex.V, simplex.O
     f0 = minimum(simplex.V)
@@ -180,13 +178,13 @@ function solve!(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, op
     is_converged = false
     while iter <= options.maxiter && !any(is_converged)
         iter += 1
-        nm_obj, x_centroid = iterate!(obj, method, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
+        nm_obj, x_centroid = iterate!(prob, method, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
         print_trace(method, options, iter, t0, simplex_value)
         if nm_obj ≤ options.nm_tol
             is_converged = true
         end
     end
-    f_centroid_min = obj(x_centroid)
+    f_centroid_min = value(prob, x_centroid)
     f_min, i_f_min = findmin(simplex_value)
     x_min = simplex_vector[i_f_min]
     if f_centroid_min < f_min
@@ -197,11 +195,10 @@ function solve!(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, op
 end
 function print_trace(::NelderMead, options, iter, t0, simplex_value)
     if !isa(options.logger, NullLogger) 
-        println(@sprintf("iter: %d   time: %.4e   obj: %.4e", iter, time()-t0, minimum(simplex_value)))
     end
 end
 
-function iterate!(obj, method::NelderMead, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
+function iterate!(prob, method::NelderMead, simplex_vector, simplex_value, i_order, x_cache, x_centroid, x_reflect, α, β, γ, δ)
     # Augment the iteration counter
     shrink = false
     n = length(first(simplex_vector))
@@ -211,13 +208,13 @@ function iterate!(obj, method::NelderMead, simplex_vector, simplex_value, i_orde
     x_highest = simplex_vector[i_order[end]]
     @. x_reflect .= x_centroid + α * (x_centroid - x_highest)
 
-    f_reflect = obj(x_reflect)
+    f_reflect = value(prob, x_reflect)
     if f_reflect < simplex_value[i_order[1]] # f_lowest(simplex)
         # Compute an expansion
         x_expand = x_cache
         @. x_expand .= x_centroid + β * (x_reflect - x_centroid)
 
-        f_expand = obj(x_expand)
+        f_expand = value(prob, x_expand)
 
         if f_expand < f_reflect
             simplex_vector[i_order[end]] .= x_expand
@@ -238,7 +235,7 @@ function iterate!(obj, method::NelderMead, simplex_vector, simplex_value, i_orde
             x_contract = x_cache
             @. x_contract .= x_centroid + γ * (x_reflect-x_centroid)
 
-            f_outside_contraction = obj(x_contract)
+            f_outside_contraction = value(prob, x_contract)
             if f_outside_contraction < f_reflect
                 simplex_vector[i_order[end]] .= x_contract
                 simplex_value[i_order[end]] = f_outside_contraction
@@ -250,7 +247,7 @@ function iterate!(obj, method::NelderMead, simplex_vector, simplex_value, i_orde
             # Inside contraction
             x_inside_contract = x_cache
             @. x_inside_contract .= x_centroid - γ *(x_reflect - x_centroid)
-            f_inside_contraction = obj(x_inside_contract)
+            f_inside_contraction = value(prob, x_inside_contract)
 
             if f_inside_contraction < simplex_value[i_order[end]] #  f_highest(simplex)
                 simplex_vector[i_order[end]] .= x_inside_contract
@@ -278,7 +275,7 @@ function iterate!(obj, method::NelderMead, simplex_vector, simplex_value, i_orde
             ord = i_order[i]
             x_lowest = simplex_vector[i_order[1]]
             @. simplex_vector[ord] .= x_lowest + δ*(simplex_vector[ord] - x_lowest)
-            simplex_value[ord] = obj(simplex_vector[ord])
+            simplex_value[ord] = value(prob, simplex_vector[ord])
         end
         step_type = "shrink"
     end
@@ -294,23 +291,24 @@ end
 #####################
 #    out-of-place   #
 #####################
-function solve(prob::MinProblem, x0, method::NelderMead, options::MinOptions)
-  solve(prob, x0, method, ABA(x0.*0 .+ 1), options)
+function solve(prob::OptimizationProblem, x0, method::NelderMead, options::MinOptions)
+    solve(prob, copy(x0), method, ABA(x0.*0 .+ 1), options)
 end
-function solve(prob::MinProblem, x0, method::NelderMead, as::AbstractSimplexer, options::MinOptions)
-    simplex_vector = initial_simplex(as, x0)
-    simplex_value = prob.objective.(simplex_vector)
+function solve(prob::OptimizationProblem, x0, method::NelderMead, as::AbstractSimplexer, options::MinOptions)
+    simplex_vector = initial_simplex(as, copy(x0))
+    simplex_value = batched_value(prob, simplex_vector) # this could be batched
     order = sortperm(simplex_value)
     simplex = ValuedSimplex(simplex_vector, simplex_value, order)
-    res = solve!(prob, simplex, method, options)
+    res = solve(prob, simplex, method, options)
     x0 .= res.info.minimizer
     return res
 end
-function solve(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, options::MinOptions)
-    obj = prob.objective
+function solve(prob::OptimizationProblem, simplex::ValuedSimplex, method::NelderMead, options::MinOptions)
+    t0 = time()
     simplex_vector, simplex_value = simplex.S, simplex.V
     n = length(first(simplex_vector))
     m = length(simplex_vector)
+    f0 = minimum(simplex.V)
 
     # Get the indices that correspond to the ordering of the f values
     # at the vertices. i_order[1] is the index in the simplex of the vertex
@@ -323,6 +321,9 @@ function solve(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, opt
     α, β, γ, δ = method.parameters(n)
     step_type = "none"
     is_converged = false
+    iter = 0
+    nm_obj = f0
+
     while iter <= options.maxiter && !any(is_converged)
         iter += 1
 
@@ -331,15 +332,14 @@ function solve(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, opt
 
         # Compute a reflection
         x_highest = simplex_vector[i_order[end]]
-        @. x_reflect = x_centroid + α * (x_centroid - x_highest)
+        x_reflect = @. x_centroid + α * (x_centroid - x_highest)
 
-        f_reflect = obj(x_reflect)
+        f_reflect = value(prob, x_reflect)
         if f_reflect < simplex_value[i_order[1]] # f_lowest(simplex)
             # Compute an expansion
-            x_expand = x_cache
-            @. x_expand = x_centroid + β * (x_reflect - x_centroid)
+            x_expand = @. x_centroid + β * (x_reflect - x_centroid)
 
-            f_expand = obj(x_expand)
+            f_expand = value(prob, x_expand)
 
             if f_expand < f_reflect
                 simplex_vector[i_order[end]] = x_expand
@@ -357,10 +357,9 @@ function solve(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, opt
         else
             if f_reflect < simplex_value[i_order[end]] # f_highest(simplex)
                 # Outside contraction
-                x_contract = x_cache
-                @. x_contract = x_centroid + γ * (x_reflect-x_centroid)
+                x_contract = @. x_centroid + γ * (x_reflect-x_centroid)
 
-                f_outside_contraction = obj(x_contract)
+                f_outside_contraction = value(prob, x_contract)    
                 if f_outside_contraction < f_reflect
                     simplex_vector[i_order[end]] = x_contract
                     simplex_value[i_order[end]] = f_outside_contraction
@@ -370,10 +369,9 @@ function solve(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, opt
                 end
             else # f_reflect > f_highest
                 # Inside contraction
-                x_inside_contract = x_cache
-                @. x_inside_contract = x_centroid - γ *(x_reflect - x_centroid)
-                f_inside_contraction = obj(x_inside_contract)
+                x_inside_contract = @. x_centroid - γ *(x_reflect - x_centroid)
 
+                f_inside_contraction = value(prob, x_inside_contract)
                 if f_inside_contraction < simplex_value[i_order[end]] #  f_highest(simplex)
                     simplex_vector[i_order[end]] = x_inside_contract
                     simplex_value[i_order[end]] = f_inside_contraction
@@ -397,8 +395,7 @@ function solve(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, opt
             for i = shrink_range
                 ord = i_order[i]
                 x_lowest = simplex_vector[i_order[1]]
-                @. simplex_vector[ord] = x_lowest + δ*(simplex_vector[ord] - x_lowest)
-                simplex_value[ord] = obj(simplex_vector[ord])
+                simplex_vector[ord] = @. x_lowest + δ*(simplex_vector[ord] - x_lowest)
             end
             step_type = "shrink"
         end
@@ -407,18 +404,18 @@ function solve(prob::MinProblem, simplex::ValuedSimplex, method::NelderMead, opt
 
         x_centroid = centroid(simplex_vector, i_order[end])
 
-        nm_x = nmobjective(simplex_value)
+        nm_obj = nmobjective(simplex_value)
         # if nm_x < 1e-18
         #     break
         # end
         # check conv
     end
-    f_centroid_min = obj(x_centroid)
+    f_centroid_min = value(prob, x_centroid)
     f_min, i_f_min = findmin(simplex_value)
     x_min = simplex_vector[i_f_min]
     if f_centroid_min < f_min
         x_min = x_centroid
         f_min = f_centroid_min
     end
-    (minimizer=x_min, minimum=f_min, centroid=x_centroid, simplex=simplex)
+    ConvergenceInfo(method, (nm_obj=nm_obj, centroid=x_centroid, simplex=simplex, minimizer=x_min, minimum=f_min, f0=f0, iter=iter, time=time()-t0), options)
 end

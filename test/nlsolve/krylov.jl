@@ -1,8 +1,10 @@
+using Revise
 using NLSolvers
 using LinearAlgebra
 using SparseDiffTools
 using SparseArrays
 using IterativeSolvers
+using ForwardDiff
 
 # Start with a stupid example
 n = 10
@@ -13,8 +15,6 @@ F(Fx, x) = mul!(Fx, A, x)
 x0, = rand(10)
 xp = copy(x0)
 Fx = copy(xp)
-
-
 
 function theta(x)
    if x[1] > 0
@@ -40,14 +40,31 @@ function F_powell!(x, Fx)
     Fx
 end
 
+function F_jacobian_powell!(x, Fx, Jx)
+    ForwardDiff.jacobian!(Jx, (y,x)->F_powell!(x,y), Fx, x)
+    Fx, Jx
+end
+Fc, Jc = zeros(3), zeros(3,3)
+F_jacobian_powell!(x0, Fc, Jc)
+
 import NLSolvers: OnceDiffedJv
 function OnceDiffedJv(F; seed, autodiff=false)
     JacOp = JacVec(F, seed; autodiff=false)
     OnceDiffedJv(F, JacOp)
 end
 
-FJacOp = OnceDiffedJv(F_powell!; seed=rand(3))
-solve!(FJacOp, rand(3), ResidualKrylov(FixedForceTerm(0.4), 1e-3, 300))
+jv = JacVec((y,x)->F_powell!(x,y), rand(3); autodiff=false)
+function jvop(x)
+    jv.u .= x
+    jv
+end
+prob_obj = NLSolvers.NEqObjective(F_powell!, nothing, F_jacobian_powell!, jvop)
+
+
+prob = NEqProblem(prob_obj)
+x0 = [-1.0, 0.0, 0.0]
+solve!(prob, x0, LineSearch(Newton(), Backtracking()))
+solve!(prob, x0, InexactNewton(FixedForceTerm(0.4), 1e-12, 300), NEqOptions(maxiter=1))
 
 function f_2by2!(F, x)
     F[1] = (x[1]+3)*(x[2]^3-7)+18
