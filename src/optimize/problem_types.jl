@@ -16,7 +16,7 @@ struct OptimizationProblem{O, B, M<:Manifold, C, X} <: AbstractProblem
     bounds::B
     manifold::M
     constraints::C
-    initial_x::X
+    initial::X
 end
 value(prob::OptimizationProblem, x) = value(prob.objective, x)
 batched_value(prob::OptimizationProblem, X) = batched_value(prob.objective, X)

@@ -4,7 +4,7 @@ abstract type ObjWrapper end
     ScalarObjective
 
 """
-struct ScalarObjective{Tf, Tg, Tfg, Tfgh, Th, Thv, Tbf}
+struct ScalarObjective{Tf, Tg, Tfg, Tfgh, Th, Thv, Tbf, P}
     f::Tf
     g::Tg
     fg::Tfg
@@ -12,11 +12,31 @@ struct ScalarObjective{Tf, Tg, Tfg, Tfgh, Th, Thv, Tbf}
     h::Th
     hv::Thv
     batched_f::Tbf
+    param::P
 end
-value(so::ScalarObjective, x) = so.f(x)
+has_param(so::ScalarObjective) = so.param === nothing ? false : true
+function value(so::ScalarObjective, x)
+    if has_param(so)
+        return so.f(x, so.param)
+    else  
+        return so.f(x)
+    end
+end
 # need fall back for the case where fgh is not there
-upto_gradient(so::ScalarObjective, x, ∇f) = so.fg(x, ∇f)
-upto_hessian(so::ScalarObjective, x, ∇f, ∇²f) = so.fgh(x, ∇f, ∇²f)
+function upto_gradient(so::ScalarObjective, x, ∇f)
+    if has_param(so)
+        return so.fg(x, ∇f, so.param)
+    else
+        return so.fg(x, ∇f)
+    end
+end
+function upto_hessian(so::ScalarObjective, x, ∇f, ∇²f)
+    if has_param(so)
+        return so.fgh(x, ∇f, ∇²f, so.param)
+    else
+        return so.fgh(x, ∇f, ∇²f)
+    end
+end
 has_batched_f(so::ScalarObjective) = !(so.batched_f === nothing)
 """
     batched_value(obj, X)
@@ -26,67 +46,37 @@ a batched_f it will have X passed collectively, else f will be broadcasted
 across the elements of X.
 """
 function batched_value(obj::ScalarObjective, X)
-    if has_batched_f(obj)# add 
-      return obj.batched_f(X)
+    if has_batched_f(obj)
+        if has_param(so)
+            return obj.batched_f(X, so.param)
+        else
+            return obj.batched_f(X)
+        end
     else
-      return obj.f.(X)
+        if has_param(so)
+            return obj.f.(X, Ref(so.param))
+        else
+            return obj.f.(X)
+        end
     end
-  end
-  function batched_value(obj::ScalarObjective, F, X)
-    if has_batched_f(obj)# add 
-        F = obj.batched_f(F, X)
+end
+function batched_value(obj::ScalarObjective, F, X)
+    if has_batched_f(obj)# add
+        if has_param(so)
+            return F = obj.batched_f(F, X, so.param)
+        else
+            return F = obj.batched_f(F, X)
+        end
     else
-        F .= obj.f.(X)
-    end
-    F
-end
-
-########
-## C⁰ ##
-########
-struct NonDiffed{Tobj} <: ObjWrapper
-    obj::Tobj
-    NonDiffed(f, infer=nothing) = new{infer !== nothing ? typeof(f) : Any}(f)
-end
-(od::NonDiffed)(x...) = od.obj(x...)
-
-########
-## C¹ ##
-########
-struct OnceDiffed{Tobj} <: ObjWrapper
-    obj::Tobj
-    function OnceDiffed(f, infer=nothing)
-        inferred = infer !== nothing ? typeof(f) : Any
-        return new{inferred}(f)
+        if has_param(so)
+            F .= obj.f.(X, Ref(so.param))
+            return F
+        else
+            F .= obj.f.(X, Ref(so.param))
+            return F
+        end
     end
 end
-(od::OnceDiffed)(x) = od.obj(x, nothing)
-(od::OnceDiffed)(x, ∇f) = od.obj(x, ∇f)
-(od::OnceDiffed)(x, F, J) = od.obj(x, F, J)
-(od::OnceDiffed)(x, y, z, args...) = throw(ArgumentError("OnceDiffed cannot be called with more than three arguements."))
-
-struct OnceDiffedJv{TR, TJv} <: ObjWrapper
-    R::TR # residual
-    Jv::TJv # jacobian vector product operator
-end
-(od::OnceDiffedJv)(x) = od.R(x, nothing)
-(od::OnceDiffedJv)(x, ∇f) = od.R(x, ∇f)
-(od::OnceDiffedJv)(x, F, J) = od.R(x, F, J)
-(od::OnceDiffedJv)(x, y, z, args...) = throw(ArgumentError("OnceDiffedJv cannot be called with more than three arguements."))
-########
-## C² ##
-########
-struct TwiceDiffed{Tobj} <: ObjWrapper
-    obj::Tobj
-    function TwiceDiffed(f, infer=nothing)
-        inferred = infer !== nothing ? typeof(f) : Any
-        return new{inferred}(f)
-    end
-end
-(td::TwiceDiffed)(x) = td.obj(x, nothing, nothing)
-(td::TwiceDiffed)(x, ∇f) = td.obj(x, ∇f, nothing)
-(td::TwiceDiffed)(x, ∇f, ∇²f) = td.obj(x, ∇f, ∇²f)
-
 
 ## If prob is a NEqProblem, then we can just dispatch to least squares MeritObjective
 # if fast JacVec exists then maybe even line searches that updates the gradient can be used??? 
