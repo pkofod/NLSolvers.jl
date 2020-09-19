@@ -158,7 +158,6 @@ function NMCaches(simplex)
 end
 
 function solve!(prob::OptimizationProblem, simplex::ValuedSimplex, method::NelderMead, options::MinOptions, nmcache=NMCaches(simplex))
-    global_logger(options.logger)
     t0 = time()
     simplex_vector, simplex_value, i_order = simplex.S, simplex.V, simplex.O
     f0 = minimum(simplex.V)
@@ -309,7 +308,6 @@ function solve(prob::OptimizationProblem, simplex::ValuedSimplex, method::Nelder
     n = length(first(simplex_vector))
     m = length(simplex_vector)
     f0 = minimum(simplex.V)
-
     # Get the indices that correspond to the ordering of the f values
     # at the vertices. i_order[1] is the index in the simplex of the vertex
     # with the lowest function value, and i_order[end] is the index in the

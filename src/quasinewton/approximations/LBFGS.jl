@@ -23,10 +23,11 @@ function find_direction!(scheme::LBFGS{<:Inverse, <:TwoLoop}, q,
                   memory,
                   scaling,
                   precon)
-    d = qnvars.d
-    T = eltype(d)
+
     S, Y = qnvars.S, qnvars.Y
 	  α, ρ = qnvars.α, qnvars.ρ
+    d    = qnvars.d
+
     # Backward pass
     @inbounds for i in memory:-1:1
         α[i] = ρ[i] * real(dot(S[i], q))
@@ -34,14 +35,14 @@ function find_direction!(scheme::LBFGS{<:Inverse, <:TwoLoop}, q,
     end
     # Copy scaled or preconditioned q into s for forward pass
     if memory > 0
-      if scaling isa InitialScaling{<:ShannoPhua} && precon isa Nothing # we need a pair to scale
-          k = scaling(S[memory], Y[memory])
-          @. d = k*q
-      elseif !(precon isa Nothing)
-          mul!(d, precon, q)
-      end
+        if scaling isa InitialScaling{<:ShannoPhua} && precon isa Nothing # we need a pair to scale
+            k = scaling(S[memory], Y[memory])
+            @. d = k*q
+        elseif !(precon isa Nothing)
+            mul!(d, precon, q)
+        end
     else
-      d .= q
+        d .= q
     end
     # Forward pass
     @inbounds for i in 1:memory
@@ -53,7 +54,7 @@ function find_direction!(scheme::LBFGS{<:Inverse, <:TwoLoop}, q,
 end
 function update_obj!(problem, qnvars, α, x, ∇fx, z, ∇fz, current_memory, scheme::LBFGS{<:Inverse, <:TwoLoop}, scale=nothing)
     # Calculate final step vector and update the state
-    fz, ∇fz = upto_gradient(problem, z, ∇fz)
+    fz, ∇fz = upto_gradient(problem, ∇fz, z)
     # add Project gradient
 
     # Quasi-Newton update

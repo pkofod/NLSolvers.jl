@@ -1,7 +1,7 @@
 function solve!(prob::NEqProblem, x, method::Anderson, options::NEqOptions)
   
-    function fixedfromnleq(x, F)
-        F .= value(prob, x, F) .+ x
+    function fixedfromnleq(F, x)
+        F .= value(prob, F, x) .+ x
     end
     fixedpoint!(fixedfromnleq, x, method;
                 # kwargs

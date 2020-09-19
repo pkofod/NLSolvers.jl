@@ -138,5 +138,32 @@ function negate(A::AbstractArray)
   -A
 end
 
+mstyle(problem::AbstractProblem) = problem.mstyle
+
+retract(problem, z, x, p) = _retract(mstyle(problem), _manifold(problem), z, x, p)
+retract(problem, z, x, p, α) = _retract(mstyle(problem), _manifold(problem), z, x, p, α)
+function _retract(::InPlace, manifold::Manifold, z, x, p)
+    retract!(manifold, z, x, p)
+    return z
+end
+function _retract(::OutOfPlace, manifold::Manifold, z, x, p)
+    z = retract(manifold, x, p)
+    return z
+end
+# shouldn't have those here
+function _retract(::InPlace, manifold::Euclidean, z, x, p, α)
+    @. z = x + α*p
+    return z
+  end
+function _retract(::OutOfPlace, manifold::Euclidean, z, x, p)
+    z = @. x + α*p
+    return z
+end
+
+function project_tangent(problem::OptimizationProblem, w, x, v)
+    _project_tanget(mstyle(problem), problem, w, x, v)    
+end
+_project_tanget(::InPlace, problem, w, x, v) = copyto!(w, v)
+_project_tanget(::OutOfPlace, problem, w, x, v) = v
 
 end # module

@@ -88,11 +88,3 @@ OPT_PROBS["exponential"]["array"] = Dict()
 # Byttet om på x og H
 OPT_PROBS["exponential"]["array"]["x0"] = [0.0, 0.0]
 OPT_PROBS["exponential"]["array"]["mutating"] = ScalarObjective(exponential!, exponential_g!, exponential_fg!, exponential_fgh!, exponential_h!, exponential_hv!, nothing, nothing)
-
-exponential_prb = Dict()
-exponential_prb["twicediffed!"] = TwiceDiffed(exponential!)
-exponential_prb["oncediffed!"] = OnceDiffed(exponential!)
-exponential_prb["initial_x"] = [0.0, 0.0]
-exponential_prb["minimizer"] = [2.0, 3.0]
-exponential_prb["minimum"] = exponential!(nothing, nothing, [2.0, 3.0])
-problems["unconstrained"]["exponential"] = exponential_prb

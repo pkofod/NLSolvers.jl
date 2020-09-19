@@ -2,8 +2,6 @@
 # case we only need to calculate one newton step. In the secular equation version
 # we need repeaed factorizations, and that is not as easy to exploit (but maybe
 # there's a good shifted one out there?)
-solve!(F::OnceDiffed, x, approach::TrustRegion{<:Union{BFGS, Newton}, <:Any, <:Any}, options::NEqOptions) = 
-  solve!(NEqProblem(F), x, approach, options)
 struct NormedResiduals{Tx, Tfx, Tf}
   x::Tx
   Fx::Tfx
@@ -19,8 +17,8 @@ function value(nr::NormedResiduals, x)
   f = (norm(Fx)^2)/2
   return f
 end
-function upto_gradient(nr::NormedResiduals, x, Fx)
-  Fx, Jx = nr.F.FJ(x, Fx, Fx*x')
+function upto_gradient(nr::NormedResiduals, Fx, x)
+  Fx, Jx = nr.F.FJ(Fx, Fx*x', x)
   if nr.x !== nothing && !all(nr.x .== x)
     # this is just to grab them outside, but this hsould come from the convergence info perhaps?
     nr.x .= x
@@ -30,8 +28,8 @@ function upto_gradient(nr::NormedResiduals, x, Fx)
   Fx .= Jx'*Fx
   return f, Fx
 end
-function upto_hessian(nr::NormedResiduals, x, Fx, Jx)  #Fx is the gradient and Jx is the Hessian
-  Fx, Jx = nr.F.FJ(x, nr.Fx, Jx)
+function upto_hessian(nr::NormedResiduals, Fx, Jx, x)  #Fx is the gradient and Jx is the Hessian
+  Fx, Jx = nr.F.FJ(nr.Fx, Jx, x)
   if nr.x !== nothing && !all(nr.x .== x)
     # this is just to grab them outside, but this hsould come from the convergence info perhaps?
     nr.x .= x

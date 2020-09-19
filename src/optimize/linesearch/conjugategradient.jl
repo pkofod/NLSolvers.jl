@@ -37,7 +37,7 @@ end
 function prepare_variables(problem, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, x0, ∇fz)
     z = x0
     x = copy(z)
-    fz, ∇fz = upto_gradient(problem, x, ∇fz)
+    fz, ∇fz = upto_gradient(problem, ∇fz, x)
 
     fx = copy(fz)
     ∇fx = copy(∇fz)
@@ -234,10 +234,9 @@ function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{
     copyto!(x, z)
     copyto!(∇fx, ∇fz)
 
-    # Update preconditioner
+    # Precondition current gradient and calculate the search direction
     P = update_preconditioner(scheme, x, P)
     P∇fz = apply_preconditioner(mstyle, P, Pg, ∇fz)
-    # Update current gradient and calculate the search direction
     @. d = -P∇fz + β*d
 
     α_0 = initial(scheme.update, a->value(problem, x.+a.*d), α, x, fx, dot(d, ∇fx), ∇fx, is_first)
@@ -247,9 +246,11 @@ function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{
     α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tx(1))
 
     # Calculate final step vector and update the state
-    @. z = x + α*d
-    fz, ∇fz = upto_gradient(problem, z, ∇fz)
+    z = retract(problem, z, x, d, α)
+
+    fz, ∇fz = upto_gradient(problem, ∇fz, z)
     @. y = ∇fz - ∇fx
+    
     β = update_parameter(mstyle, scheme.update, d, ∇fz, ∇fx, y, P, P∇fz)
 
     return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=nothing, Pg=Pg), P, CGVars(y, d, α, β, ls_success)
@@ -279,8 +280,8 @@ function iterate(mstyle::OutOfPlace, cgvars::CGVars, objvars, approach::LineSear
     # Perform line search along d
     α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tx(1))
 
-    z = @. x + α*d
-    fz, ∇fz = upto_gradient(problem, z, ∇fz)
+    z = retract(problem, z, x, d, α)
+    fz, ∇fz = upto_gradient(problem, ∇fz, z)
     y = @. ∇fz - ∇fx
     β = update_parameter(mstyle, scheme.update, d, ∇fz, ∇fx, y, P, P∇fz)
     return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=nothing, Pg=Pg), P, CGVars(y, d, α, β, ls_success)

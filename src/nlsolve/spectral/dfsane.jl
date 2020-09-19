@@ -60,7 +60,7 @@ function solve!(prob::NEqProblem, x0, method::DFSANE, options::NEqOptions)
   x = copy(x0)
   ρs = norm(x)
   Fx = copy(x0)
-  Fx = F(x, Fx)
+  Fx = F(Fx, x)
   y = copy(Fx)
   ρ2F0 = norm(Fx, 2)
   ρF0 = norm(Fx, Inf)
@@ -83,14 +83,14 @@ function solve!(prob::NEqProblem, x0, method::DFSANE, options::NEqOptions)
     fbar = maximum(fvals)
     d = -σ*Fx
     ηk = ρ2F0/(1+iter)^2
-    φ(α) = norm(F(x.+α.*d, Fx))^nexp
+    φ(α) = norm(F(Fx, x.+α.*d))^nexp
     φ0 = fx
     α, φα = find_steplength(RNMS(), φ, φ0, fbar, ηk, τmin, τmax)
     s = α*d
     ρs = norm(s)
     x .= x.+s
     y .= -Fx
-    Fx = F(x, Fx)
+    Fx = F(Fx, x)
     y .+= Fx
     ρ2fx = norm(Fx, 2)
     ρfx = norm(Fx ,Inf)

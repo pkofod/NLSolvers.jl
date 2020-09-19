@@ -14,15 +14,19 @@ The package NLSolversAD.jl adds automatic conversion of problems to match algori
 that require higher order derivates than provided by the user. It also adds AD
 constructors for a target number of derivatives.
 """
-struct NEqProblem{IIP, TR, Tb, Tm<:Manifold}
+struct NEqProblem{TR, Tb, Tm<:Manifold, I}
   R::TR
   bounds::Tb
   manifold::Tm
+  mstyle::I
 end
-NEqProblem(residuals) = NEqProblem{true, typeof(residuals), Nothing, typeof(Euclidean(0))}(residuals, nothing, Euclidean(0))
+function NEqProblem(residuals; inplace=true)
+  mstyle = inplace===true ? InPlace() : OutOfPlace()
+  NEqProblem(residuals, nothing, Euclidean(0), mstyle)
+end
+mstyle(problem::NEqProblem) = problem.mstyle
 _manifold(prob::NEqProblem) = prob.manifold
-is_inplace(::NEqProblem{false}) = false
-is_inplace(::NEqProblem{true}) = true
+is_inplace(problem::NEqProblem) = mstyle(problem) === InPlace()
 
 #function value(nleq::NEqProblem, x)
 #    nleq.R(x)

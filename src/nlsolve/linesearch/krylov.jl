@@ -94,11 +94,11 @@ InexactNewton(; force_seq=DemboSteihaug(), eta0 = 1e-4, maxiter=300)=InexactNewt
 η(fft::InexactNewton, info) = η(fft.force_seq, info)
 
 
-function solve!(prob::NEqProblem, x, method::InexactNewton, options::NEqOptions)
+function solve!(problem::NEqProblem, x, method::InexactNewton, options::NEqOptions)
     t0 = time()
 
-    F = prob.R.F
-    JvGen = prob.R.Jv
+    F = problem.R.F
+    JvGen = problem.R.Jv
 
     Tx = eltype(x)
     xp, Fx = copy(x), copy(x)
@@ -149,8 +149,10 @@ function solve!(prob::NEqProblem, x, method::InexactNewton, options::NEqOptions)
         it = 0
         while !btk_conv
             it += 1
-            @. z = x - xp
-            Fx = prob.R.F(z, Fx)
+
+            z = retract(problem, z, x, xp)
+
+            Fx = problem.R.F(z, Fx)
             btk_conv = norm(Fx, 2) ≤ (1-t*(1-ηₖ))*ρFx || it > 20
         end
         if norm(Fx, 2) < stoptol
@@ -162,6 +164,3 @@ function solve!(prob::NEqProblem, x, method::InexactNewton, options::NEqOptions)
     end
     return ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, ρs=ρs, iter=iter, time=time()-t0), options)
 end
-value!(prob::OnceDiffedJv, Fx, x) = prob.R(Fx, x)
-value_fn(prob) = prob.R
-jacvec_fn(prob) = prob.Jv

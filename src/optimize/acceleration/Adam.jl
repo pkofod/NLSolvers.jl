@@ -43,7 +43,7 @@ function solve(problem::OptimizationProblem, x0, adam::Adam, options)
   α, β₁, β₂, ϵ = adam.α, adam.β₁, adam.β₂, adam.ϵ
   t0 = time()
 
-  fz, ∇fz = upto_gradient(problem, x0, copy(x0))
+  fz, ∇fz = upto_gradient(problem, copy(x0), x0)
   f0, ∇f0 = fz, norm(∇fz, Inf)
 
   z = copy(x0)
@@ -66,7 +66,7 @@ function solve(problem::OptimizationProblem, x0, adam::Adam, options)
     z = z .- αₜ .* m ./ (sqrt.(v) .+ ϵ)
 
     # ∇fz = gradient!(mp, x, ∇fz)
-    fz, ∇fz = upto_gradient(problem, z, ∇fz)
+    fz, ∇fz = upto_gradient(problem, ∇fz, z)
     is_converged = iter >= options.maxiter
   end
   ConvergenceInfo(adam, (solver=z, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
@@ -75,7 +75,7 @@ function solve(problem::OptimizationProblem, x0, adam::AdaMax, options)
   α, β₁, β₂ = adam.α, adam.β₁, adam.β₂
   t0 = time()
 
-  fz, ∇fz = upto_gradient(problem, x0, copy(x0))
+  fz, ∇fz = upto_gradient(problem, copy(x0), x0)
   f0, ∇f0 = fz, norm(∇fz, Inf) 
  
   z = copy(x0)
@@ -92,7 +92,7 @@ function solve(problem::OptimizationProblem, x0, adam::AdaMax, options)
     u = max.(β₂.*u, abs.(∇fz))
     z = z .- (α ./ (1 - β₁^iter)) .* m ./ u
 
-    fz, ∇fz = upto_gradient(problem, z, ∇fz)
+    fz, ∇fz = upto_gradient(problem, ∇fz, z)
     is_converged = iter >= options.maxiter
   end
   ConvergenceInfo(adam, (solver=z, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)

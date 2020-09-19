@@ -11,18 +11,19 @@ are bounds constraints and manifold constraints on the inputs.
 Options are stored in `options` and must be an appropriate options type. See more information
 about options using `?MinOptions`.
 """
-struct OptimizationProblem{O, B, M<:Manifold, C, X} <: AbstractProblem
+struct OptimizationProblem{O, B, M<:Manifold, C, I, X} <: AbstractProblem
     objective::O
     bounds::B
     manifold::M
     constraints::C
-    initial_x::X
+    mstyle::I
+    initial::X
 end
 value(prob::OptimizationProblem, x) = value(prob.objective, x)
 batched_value(prob::OptimizationProblem, X) = batched_value(prob.objective, X)
 batched_value(prob::OptimizationProblem, F, X) = batched_value(prob.objective, F, X)
-upto_gradient(prob::OptimizationProblem, x, ∇f) = upto_gradient(prob.objective, x, ∇f)
-upto_hessian(prob::OptimizationProblem, x, ∇f, ∇²f) = upto_hessian(prob.objective, x, ∇f, ∇²f)
+upto_gradient(prob::OptimizationProblem, ∇f, x) = upto_gradient(prob.objective, ∇f, x)
+upto_hessian(prob::OptimizationProblem, ∇f, ∇²f, x) = upto_hessian(prob.objective, ∇f, ∇²f, x)
 _manifold(prob::OptimizationProblem) = prob.manifold
 lowerbounds(mp::OptimizationProblem) = mp.bounds[1]
 upperbounds(mp::OptimizationProblem) = mp.bounds[2]
@@ -31,15 +32,11 @@ bounds(mp::OptimizationProblem) = (lower=lowerbounds(mp), upper=upperbounds(mp))
 isboundedonly(::OptimizationProblem{<:Any, <:Nothing, <:Any, <:Nothing}) = false
 isboundedonly(::OptimizationProblem{<:Any, <:Nothing, <:Any, <:Any}) = false
 isboundedonly(::OptimizationProblem{<:Any, <:Any, <:Any, <:Nothing}) = true
-
 #value(p::OptimizationProblem, args...) = p.objective(args...)
 constraints(p::OptimizationProblem, args...) = p.constraints(args...)
-OptimizationProblem(; obj=nothing, bounds=nothing, manifold=Euclidean(0), constraints=nothing, initial_x=nothing) =
-  OptimizationProblem(obj, bounds, manifold, constraints, initial_x)
-OptimizationProblem(obj) = OptimizationProblem(obj, nothing, Euclidean(0), nothing, nothing)
-
-minimize!(obj, args...) = solve!(OptimizationProblem(obj), args...)
-minimize(obj, args...) = solve(OptimizationProblem(obj), args...)
+OptimizationProblem(; obj=nothing, bounds=nothing, manifold=Euclidean(0), constraints=nothing, inplace=true, initial_x=nothing) =
+  OptimizationProblem(obj, bounds, manifold, constraints, inplace===true ? InPlace() : OutOfPlace(), initial_x)
+OptimizationProblem(obj; inplace=true) = OptimizationProblem(obj, nothing, Euclidean(0), nothing, inplace===true ? InPlace() : OutOfPlace(), nothing)
 
 struct ConvergenceInfo{Ts, T, O}
   solver::Ts
@@ -204,9 +201,9 @@ function prepare_variables(prob, approach, x0, ∇fz, B)
     end
     # first evaluation
     if isa(modelscheme(approach), Newton)
-        fz, ∇fz, B = upto_hessian(prob, x, ∇fz, B)
+        fz, ∇fz, B = upto_hessian(prob, ∇fz, B, x)
     else
-        fz, ∇fz = upto_gradient(prob, x, ∇fz)
+        fz, ∇fz = upto_gradient(prob, ∇fz, x)
     end
     fx = copy(fz)
     ∇fx = copy(∇fz)

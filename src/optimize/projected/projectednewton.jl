@@ -147,7 +147,7 @@ function find_steplength(mstyle, ls::ArmijoBertsekas, φ::T, λ, ∇fx, Ibool, l
     t0 = decrease*dφ0 # dphi0 should take into account the active set
     iter, α, β = 0, λ, λ # iteration variables
     f_α = φ(α)   # initial function value
-    x⁺ = retract.(lower, upper, x, p, α)
+    x⁺ = box_retract.(lower, upper, x, p, α)
 
     if verbose
         println("Entering line search with step size: ", λ)
@@ -158,7 +158,7 @@ function find_steplength(mstyle, ls::ArmijoBertsekas, φ::T, λ, ∇fx, Ibool, l
     while !is_solved && iter <= maxiter
         iter += 1
         β, α, f_α = interpolate(ls.interp, φ, φ0, dφ0, α, f_α, ratio)
-        x⁺ = retract.(lower, upper, x, p, α)
+        x⁺ = box_retract.(lower, upper, x, p, α)
         is_solved = isfinite(f_α) && f_α <= φ0 - decrease*sum(bertsekas_R.(x, x⁺, g, p, α, activeset))
     end
 
@@ -174,4 +174,5 @@ end
 
 bertsekas_R(x, x⁺, g, p, α, i) = i ? g*(x-x⁺) : α*p*g
 # defined univariately
-retract(lower, upper, x, p, α) = min(upper, max(lower, x-α*p))
+# should be a "manifodl"
+box_retract(lower, upper, x, p, α) = min(upper, max(lower, x-α*p))

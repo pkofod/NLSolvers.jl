@@ -33,11 +33,11 @@ function fixedpoint!(g, x,
 
     Notation: AA solves g(x) - x = 0 or F(x) = 0
   ==============================================================#  
-  Gx  = g(x, Gx)
+  Gx  = g(Gx, x)
   Fx .= Gx .- x
   x  .= Gx
   for i = 1:anderson.delay
-    Gx = g(x, Gx)
+    Gx = g(Gx, x)
     Fx .= Gx .- x
     x .= Gx
     finite_check = isallfinite(x)
