@@ -1,5 +1,4 @@
 function solve!(problem::OptimizationProblem, s0::Tuple, approach::TrustRegion, options::MinOptions)
-
     t0 = time()
     x0, B0 = s0
     T = eltype(x0)
@@ -58,9 +57,8 @@ function iterate!(p, objvars, Δk, approach::TrustRegion, problem, options, qnva
     if abs(spr.mz) < eps(T)
         # set flag to check for problems
     end
-
-    # add Retract
-    z .= x + p
+    
+    z = retract(problem, z, x, p)
 
     # Update before acceptance, to keep adding information about the hessian
     # even when the step is not "good" enough.

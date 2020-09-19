@@ -23,18 +23,18 @@ function value(so::ScalarObjective, x)
     end
 end
 # need fall back for the case where fgh is not there
-function upto_gradient(so::ScalarObjective, x, ∇f)
+function upto_gradient(so::ScalarObjective, ∇f, x)
     if has_param(so)
-        return so.fg(x, ∇f, so.param)
+        return so.fg(∇f, x, so.param)
     else
-        return so.fg(x, ∇f)
+        return so.fg(∇f, x)
     end
 end
-function upto_hessian(so::ScalarObjective, x, ∇f, ∇²f)
+function upto_hessian(so::ScalarObjective, ∇f, ∇²f, x)
     if has_param(so)
-        return so.fgh(x, ∇f, ∇²f, so.param)
+        return so.fgh(∇f, ∇²f, x, so.param)
     else
-        return so.fgh(x, ∇f, ∇²f)
+        return so.fgh(∇f, ∇²f, x)
     end
 end
 has_batched_f(so::ScalarObjective) = !(so.batched_f === nothing)
@@ -45,34 +45,34 @@ Return the objective evaluated at all elements of X. If obj contains
 a batched_f it will have X passed collectively, else f will be broadcasted
 across the elements of X.
 """
-function batched_value(obj::ScalarObjective, X)
-    if has_batched_f(obj)
+function batched_value(so::ScalarObjective, X)
+    if has_batched_f(so)
         if has_param(so)
-            return obj.batched_f(X, so.param)
+            return so.batched_f(X, so.param)
         else
-            return obj.batched_f(X)
+            return so.batched_f(X)
         end
     else
         if has_param(so)
-            return obj.f.(X, Ref(so.param))
+            return so.f.(X, Ref(so.param))
         else
-            return obj.f.(X)
+            return so.f.(X)
         end
     end
 end
-function batched_value(obj::ScalarObjective, F, X)
-    if has_batched_f(obj)# add
+function batched_value(so::ScalarObjective, F, X)
+    if has_batched_f(so)# add
         if has_param(so)
-            return F = obj.batched_f(F, X, so.param)
+            return F = so.batched_f(F, X, so.param)
         else
-            return F = obj.batched_f(F, X)
+            return F = so.batched_f(F, X)
         end
     else
         if has_param(so)
-            F .= obj.f.(X, Ref(so.param))
+            F .= so.f.(X, Ref(so.param))
             return F
         else
-            F .= obj.f.(X, Ref(so.param))
+            F .= so.f.(X, Ref(so.param))
             return F
         end
     end
@@ -91,7 +91,7 @@ struct LineObjective!{TP, T1, T2, T3}
 end
 (le::LineObjective!)(λ)=value(le.prob, retract!(_manifold(le.prob), le.z, le.x, le.d, λ))
 function (le::LineObjective!)(λ, calc_grad::Bool)
-    f, g = upto_gradient(le.prob, retract!(_manifold(le.prob), le.z, le.x, le.d, λ), le.∇fz)
+    f, g = upto_gradient(le.prob, le.∇fz, retract!(_manifold(le.prob), le.z, le.x, le.d, λ))
     f, dot(g, le.d)
 end
 struct LineObjective{TP, T1, T2, T3}
@@ -105,7 +105,7 @@ struct LineObjective{TP, T1, T2, T3}
 end
 (le::LineObjective)(λ)=value(le.prob, retract(_manifold(le.prob), le.x, le.d, λ))
 function (le::LineObjective)(λ, calc_grad::Bool)
-    f, g = upto_gradient(le.prob, retract(_manifold(le.prob), le.x, le.d, λ), le.∇fz)
+    f, g = upto_gradient(le.prob, le.∇fz, retract(_manifold(le.prob), le.x, le.d, λ))
     f, dot(g, le.d)
 end
 
@@ -122,7 +122,7 @@ struct MeritObjective{TP, T1, T2, T3, T4, T5}
   d::T5
 end
 function value(mo::MeritObjective, x)
-  Fx = mo.F(x, mo.Fx)
+  Fx = mo.F(mo.Fx, x)
   (norm(Fx)^2)/2
 end
 
@@ -132,11 +132,11 @@ struct LsqWrapper{Tobj, TF, TJ} <: ObjWrapper
   J::TJ
 end
 function (lw::LsqWrapper)(x)
-  F = lw.R(x, lw.F)
+  F = lw.R(lw.F, x)
   sum(abs2, F)/2
 end
-function (lw::LsqWrapper)(x, ∇f)
-  _F, _J = lw.R(x, lw.F, lw.J)
+function (lw::LsqWrapper)(∇f, x)
+  _F, _J = lw.R(lw.F, lw.J, x)
   copyto!(∇f, sum(_J; dims=1))
   sum(abs2, _F), ∇f
 end

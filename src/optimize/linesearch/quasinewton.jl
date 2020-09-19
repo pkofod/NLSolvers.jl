@@ -79,7 +79,6 @@ function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, probl
     # split up the approach into the hessian approximation scheme and line search
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
 
-
     Tf = typeof(fx)
     scheme, linesearch = modelscheme(approach), algorithm(approach)
     y, d, s = cache.y, cache.d, cache.s
@@ -99,8 +98,10 @@ function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, probl
     # Also returns final step vector and update the state
     α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tf(1))
 
+    
     @. s = α * d
-    @. z = x + s
+    z = retract(problem, z, x, s)
+ 
     # Update approximation
     fz, ∇fz, B, s, y = update_obj!(problem, s, y, ∇fx, z, ∇fz, B, scheme, is_first)
     return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=B, Pg=Pg, α=α), P, QNVars(d, s, y)
@@ -111,7 +112,7 @@ function print_trace(approach::LineSearch, options, iter, t0, objvars, Δ)
     end
 end
 
-function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch, prob::OptimizationProblem, options::MinOptions, is_first=nothing)
+function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch, problem::OptimizationProblem, options::MinOptions, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     Tf = typeof(fx)
@@ -125,14 +126,14 @@ function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch, pr
     P = update_preconditioner(scheme, x, P)
     # Update current gradient and calculate the search direction
     d = find_direction(B, P, ∇fx, scheme) # solve Bd = -∇fx
-    φ = _lineobjective(mstyle, prob, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
+    φ = _lineobjective(mstyle, problem, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
 
     # # Perform line search along d
     α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tf(1))
 
     # # Calculate final step vector and update the state
     s = @. α * d
-    z = @. x + s
+    z = retract(problem, z, x, s)
 
     # Update approximation
     fz, ∇fz, B, s, y = update_obj(obj, s, ∇fx, z, ∇fz, B, scheme, is_first)

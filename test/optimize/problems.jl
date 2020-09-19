@@ -89,10 +89,21 @@ OPT_PROBS["exponential"]["array"] = Dict()
 OPT_PROBS["exponential"]["array"]["x0"] = [0.0, 0.0]
 OPT_PROBS["exponential"]["array"]["mutating"] = ScalarObjective(exponential!, exponential_g!, exponential_fg!, exponential_fgh!, exponential_h!, exponential_hv!, nothing, nothing)
 
-exponential_prb = Dict()
-exponential_prb["twicediffed!"] = TwiceDiffed(exponential!)
-exponential_prb["oncediffed!"] = OnceDiffed(exponential!)
-exponential_prb["initial_x"] = [0.0, 0.0]
-exponential_prb["minimizer"] = [2.0, 3.0]
-exponential_prb["minimum"] = exponential!(nothing, nothing, [2.0, 3.0])
-problems["unconstrained"]["exponential"] = exponential_prb
+OPT_PROBS["laplacian"] = Dict()
+OPT_PROBS["laplacian"]["array"] = Dict()
+# Byttet om på x og H
+OPT_PROBS["laplacian"]["array"]["x0(n)"] = n->zeros(n)
+
+plap(U; n=length(U)) = (n-1) * sum((0.1 .+ diff(U).^2).^2) - sum(U) / (n-1)
+plap1(U; n=length(U), dU = diff(U), dW = 4 .* (0.1 .+ dU.^2) .* dU) =
+(n - 1) .* ([0.0; dW] .- [dW; 0.0]) .- ones(n) / (n-1)
+precond(x::Vector) = precond(length(x))
+precond(n::Number) = spdiagm(-1 => -ones(n-1), 0 => 2*ones(n), 1 => -ones(n-1)) * (n+1)
+_f(x) = plap([0;x;0])
+function _fg(∇f, x)
+    fx = _f(x)
+    copyto!(∇f, (plap1([0;x;0]))[2:end-1])
+    fx, ∇f
+end
+
+OPT_PROBS["laplacian"]["array"]["mutating"] = OptimizationProblem(ScalarObjective(_f, nothing, _fg, nothing, nothing, nothing, nothing, nothing))

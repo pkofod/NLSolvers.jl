@@ -3,23 +3,23 @@ init(::NEqProblem, ::LineSearch, x) = (z=copy(x), d=copy(x), Fx=copy(x), Jx=x*x'
 # the bang is just potentially inplace x and state. nonbang copies these
 function solve!(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Static(1)), options=NEqOptions(), state=init(prob, method, x))
     t0 = time()
-    iip = is_inplace(prob)
+    
+    # Unpack
+    scheme, linesearch = modelscheme(method), algorithm(method)
     # Unpack important objectives
     F = prob.R.F
     FJ = prob.R.FJ
-
-    # Unpack method
-    scheme, linesearch = modelscheme(method), algorithm(method)
-
+    # Unpack state
     z, d, Fx, Jx = state
     T = eltype(Fx)
+
 
     # Set up MeritObjective. This defines the least squares
     # objective for the line search.
     merit = MeritObjective(prob, F, FJ, Fx, Jx, d)
     meritproblem = OptimizationProblem(merit)
     # Evaluate the residual and Jacobian
-    Fx, Jx = FJ(x, Fx, Jx)
+    Fx, Jx = FJ(Fx, Jx, x)
     ρF0, ρ2F0 = norm(Fx, Inf),  norm(Fx, 2)
 
     stoptol = T(options.f_reltol)*ρF0 + T(options.f_abstol)
@@ -64,7 +64,7 @@ function solve!(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Sta
         z .= x .+ α.*d
 
         # Update residual and jacobian
-        Fx, Jx = FJ(z, Fx, Jx)
+        Fx, Jx = FJ(Fx, Jx, z)
 
         # Update 2-norm for line search conditions: ϕ(0) and ϕ'(0)
         ρ2F = norm(Fx, 2)
