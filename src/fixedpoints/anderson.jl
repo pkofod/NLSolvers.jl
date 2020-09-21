@@ -35,6 +35,8 @@ function fixedpoint!(g, x,
   ==============================================================#  
   Gx  = g(Gx, x)
   Fx .= Gx .- x
+  ρF0 = norm(Fx, Inf)
+  ρ2F0 = norm(Fx, 2)
   x  .= Gx
   for i = 1:anderson.delay
     Gx = g(Gx, x)
@@ -132,5 +134,6 @@ function fixedpoint!(g, x,
       return (x=x, Fx=Fx, acc_iter=0, finite=finite_check)
     end
   end
+  ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, iter=iter, time=time()-t0), options)
   Gx, Gx, x
 end
