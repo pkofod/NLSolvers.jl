@@ -92,7 +92,7 @@ end
 (le::LineObjective!)(λ)=value(le.prob, retract!(_manifold(le.prob), le.z, le.x, le.d, λ))
 function (le::LineObjective!)(λ, calc_grad::Bool)
     f, g = upto_gradient(le.prob, le.∇fz, retract!(_manifold(le.prob), le.z, le.x, le.d, λ))
-    f, dot(g, le.d)
+    f, real(dot(g, le.d)) # because complex dot might not have exactly zero im part and it's the wrong type
 end
 struct LineObjective{TP, T1, T2, T3}
     prob::TP
@@ -103,10 +103,12 @@ struct LineObjective{TP, T1, T2, T3}
     φ0::T3
     dφ0::T3
 end
-(le::LineObjective)(λ)=value(le.prob, retract(_manifold(le.prob), le.x, le.d, λ))
+function (le::LineObjective)(λ)
+    value(le.prob, retract(_manifold(le.prob), le.x, le.d, λ))
+end
 function (le::LineObjective)(λ, calc_grad::Bool)
     f, g = upto_gradient(le.prob, le.∇fz, retract(_manifold(le.prob), le.x, le.d, λ))
-    f, dot(g, le.d)
+    f, real(dot(g, le.d)) # because complex dot might not have exactly zero im part and it's the wrong type
 end
 
 # We call real on dφ0 because x and df might be complex

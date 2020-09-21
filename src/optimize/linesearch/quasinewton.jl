@@ -92,7 +92,8 @@ function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, probl
     P = update_preconditioner(scheme, x, P)
     # Update current gradient and calculate the search direction
     d = find_direction!(d, B, P, ∇fx, scheme) # solve Bd = -∇fx
-    φ = _lineobjective(mstyle, problem, ∇fz, z, x, d, fx, dot(∇fx, d))
+    # real is needed to convert complex dots to actually being real
+    φ = _lineobjective(mstyle, problem, ∇fz, z, x, d, fx, real(dot(∇fx, d)))
 
     # Perform line search along d
     # Also returns final step vector and update the state
@@ -126,9 +127,10 @@ function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch, pr
     P = update_preconditioner(scheme, x, P)
     # Update current gradient and calculate the search direction
     d = find_direction(B, P, ∇fx, scheme) # solve Bd = -∇fx
-    φ = _lineobjective(mstyle, problem, obj, ∇fz, z, x, d, fx, dot(∇fx, d))
+    # real is needed to convert complex dots to actually being real
+    φ = _lineobjective(mstyle, problem, ∇fz, z, x, d, fx, real(dot(∇fx, d)))
 
-    # # Perform line search along d
+    # Perform line search along d
     α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tf(1))
 
     # # Calculate final step vector and update the state
@@ -136,7 +138,7 @@ function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch, pr
     z = retract(problem, z, x, s)
 
     # Update approximation
-    fz, ∇fz, B, s, y = update_obj(obj, s, ∇fx, z, ∇fz, B, scheme, is_first)
+    fz, ∇fz, B, s, y = update_obj(problem, s, ∇fx, z, ∇fz, B, scheme, is_first)
 
     return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=B, Pg=Pg), P, QNVars(d, s, y)
 end
