@@ -225,7 +225,7 @@ function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{
     # split up the approach into the hessian approximation scheme and line search
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     Tx = eltype(x)
-
+  
     scheme, linesearch = modelscheme(approach), algorithm(approach)
     y, d, α, β = cgvars.y, cgvars.d, cgvars.α, cgvars.β
 
@@ -246,11 +246,14 @@ function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{
     α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tx(1))
 
     # Calculate final step vector and update the state
-    z = retract(problem, z, x, d, α)
-
-    fz, ∇fz = upto_gradient(problem, ∇fz, z)
-    @. y = ∇fz - ∇fx
-    
+    if ls_success
+        z = retract(problem, z, x, d, α)
+        fz, ∇fz = upto_gradient(problem, ∇fz, z)
+        @. y = ∇fz - ∇fx
+    else
+        # if no succesful search direction is found, reset to gradient
+        y .= .-∇fz
+    end
     β = update_parameter(mstyle, scheme.update, d, ∇fz, ∇fx, y, P, P∇fz)
 
     return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=nothing, Pg=Pg), P, CGVars(y, d, α, β, ls_success)
