@@ -44,40 +44,27 @@ function update(scheme::BFGS{<:Direct}, B, s, y)
    B + (ρ*y)*y' - ρbb*b'
 end
 function update(scheme::BFGS{<:Inverse}, H, s, y)
-   σ = dot(s, y)
-   ρ = inv(σ)
-
-   C = (I - ρ*s*y')
-   H = C*H*C' + ρ*s*s'
-
-   H
+    σ = dot(s, y)
+    ρ = inv(σ)
+    C = (I - ρ*s*y')
+    H = C*H*C' + ρ*s*s'
+   
+    H
 end
 function update!(scheme::BFGS{<:Inverse}, H, s, y)
-   n = length(s)
-   σ = dot(s, y)
-   ρ = inv(σ)
-   s, y = vec(s), vec(y)
-   if isfinite(ρ)
-    Hy = H*y 
-    c1 = (σ + dot(y, Hy)) / σ^2
-    for i = 1:n, j = 1:n
-      H[i,j] += c1 * s[i] * s[j] - ρ * (Hy[i] * s[j] + Hy[j] * s[i])
+    n = length(s)
+    σ = dot(s, y)
+    ρ = inv(σ)
+    s, y = vec(s), vec(y)
+    if isfinite(ρ)
+       Hy = H*y
+       κ = (σ + dot(y', Hy)) / (σ * σ)
+       for i = 1:n, j = 1:n
+            H[i,j] += κ * s[i] * s[j]' - ρ * (Hy[i] * s[j]' + Hy[j]' * s[i])
+       end
     end
-  end
-  H
+    H
 end
-
-# end
-# function update!(H, s, y, scheme::BFGS{<:Inverse})
-#    sy = dot(s, y)
-#    ρ = inv(sy)
-#
-#    if isfinite(ρ)
-#       C = (I - ρ.*s*y')
-#       H .= C*H*C' + ρ*s*s'
-#    end
-#    H
-# end
 
 function update!(scheme::BFGS{<:Inverse}, A::UniformScaling, s, y)
    update(scheme, A, s, y)

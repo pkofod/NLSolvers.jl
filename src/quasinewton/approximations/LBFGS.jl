@@ -50,7 +50,7 @@ function find_direction!(scheme::LBFGS{<:Inverse, <:TwoLoop}, q,
         d .+= S[i] .* (α[i] - β)
     end
     # Negate search direction
-    negate!(d)
+    negate(InPlace(), d)
 end
 function update_obj!(problem, qnvars, α, x, ∇fx, z, ∇fz, current_memory, scheme::LBFGS{<:Inverse, <:TwoLoop}, scale=nothing)
     # Calculate final step vector and update the state

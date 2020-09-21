@@ -127,19 +127,27 @@ include("nlsolve/acceleration/anderson.jl")
 # Forcing Terms
 export FixedForceTerm, DemboSteihaug, EisenstatWalkerA, EisenstatWalkerB
 
+function negate(problem::AbstractProblem, A)
 
-function negate!(A::AbstractArray)
-  @inbounds for i in eachindex(A)
-    A[i] = -A[i]
-  end
+end
+function negate(::InPlace, A::AbstractArray)
+  A .= .-A
+#  @inbounds for i in eachindex(A)
+#    A[i] = -A[i]
+#  end
   A
 end
-function negate(A::AbstractArray)
+function negate(::OutOfPlace, A::AbstractArray)
   -A
 end
 
 mstyle(problem::AbstractProblem) = problem.mstyle
 
+"""
+    retract(problem, z, x, p [, α])
+
+Move from `x` along the direction `p` (or `α*p` if α is supplied) to a new point on the manifold in `problem` and store it in z if the problem is specified as inplace.  If the problem is inplace and updated `z` is returned, else a new vector is returned.
+"""
 retract(problem, z, x, p) = _retract(mstyle(problem), _manifold(problem), z, x, p)
 retract(problem, z, x, p, α) = _retract(mstyle(problem), _manifold(problem), z, x, p, α)
 function _retract(::InPlace, manifold::Manifold, z, x, p)
@@ -156,14 +164,19 @@ function _retract(::InPlace, manifold::Euclidean, z, x, p, α)
     return z
   end
 function _retract(::OutOfPlace, manifold::Euclidean, z, x, p)
-    z = @. x + α*p
+    z = @. x + p
     return z
 end
 
+"""
+    project_tanget(problem, w, x, y)
+
+Project g on the tangent space to the manifold (stored in `problem`) at x and store the result in `w` if the problem is specified as inplace. If the problem is inplace and updated `w` is returned, else a new vector is returned.
+"""
 function project_tangent(problem::OptimizationProblem, w, x, v)
-    _project_tanget(mstyle(problem), problem, w, x, v)    
+    project_tanget(mstyle(problem), problem, w, x, v)    
 end
-_project_tanget(::InPlace, problem, w, x, v) = copyto!(w, v)
-_project_tanget(::OutOfPlace, problem, w, x, v) = v
+project_tanget(::InPlace, problem, w, x, v) = copyto!(w, v)
+project_tanget(::OutOfPlace, problem, w, x, v) = v
 
 end # module

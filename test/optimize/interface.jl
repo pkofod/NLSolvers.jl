@@ -36,6 +36,8 @@ using ForwardDiff
 #
 #
 # ADAM needs @show solve! and AdaMax
+# 
+# TODO: LineObjetive doesn't need ! when we have problem in there and mstyle
 
 #### OPTIMIZATION
 f = OPT_PROBS["himmelblau"]["array"]["mutating"]

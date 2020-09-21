@@ -73,7 +73,7 @@ function solve(prob::OptimizationProblem, x0, method::SimulatedAnnealing, option
     else
       # If proposal is inferior, we move to it with probability p
       p = exp(-(f_candidate - f_now) / temperature)
-      if T(RandomNumbers.rand()) <= p
+      if RandomNumbers.rand() <= p
         x_now = copy(x_candidate)
         f_now = f_candidate
       end

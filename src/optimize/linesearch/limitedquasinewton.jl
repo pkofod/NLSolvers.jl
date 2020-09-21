@@ -78,7 +78,7 @@ function iterate(mstyle::InPlace, iter::Integer, qnvars::TwoLoopVars, objvars, P
     P = update_preconditioner(scheme, x, P) # returns nothing????
     # Update current gradient and calculate the search direction
     d = find_direction!(scheme, copy(∇fz), qnvars, current_memory, K, P) # solve Bd = -∇fx
-    φ = _lineobjective(mstyle, problem, ∇fz, z, x, d, fx, dot(∇fx, d))
+    φ = _lineobjective(mstyle, problem, ∇fz, z, x, d, fx, real(dot(∇fx, d))) # real is needed to convert complex dots to actually being real
 
     # Perform line search along d
     α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, Tf(1))
