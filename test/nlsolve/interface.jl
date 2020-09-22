@@ -152,4 +152,25 @@ res = solve!(NEqProblem(dfsane_prob2), x0, NLSolvers.DFSANE(), NLSolvers.NEqOpti
 @test norm(res.info.best_residual, Inf) < 1e-5 
 
 
+
+
+# Take from problems
+prob = NEqProblem(NLE_PROBS["rosenbrock"]["array"]["mutating"])
+x0 = copy(NLE_PROBS["rosenbrock"]["array"]["x0"])
+X0 = [[-0.8, 1.0], [-0.7, 1.0], [-0.7, 1.2], [-0.5, 0.7], [0.5, 0.4], [-1.2, 1.0]]
+for x0 in X0
+    res = solve!(prob, x0, TrustRegion(Newton(), Dogleg()), NEqOptions())
+    @test norm(res.info.best_residual, Inf) < 1e-12
+    res = solve!(prob, x0, TrustRegion(Newton(), NWI()), NEqOptions())
+    @test norm(res.info.best_residual, Inf) < 1e-12
+    res = solve!(prob, x0, TrustRegion(Newton(), NTR()), NEqOptions())
+    @test norm(res.info.best_residual, Inf) < 1e-12
+    res = solve!(prob, x0, LineSearch(Newton(), Static(0.6)), NEqOptions())
+    @test norm(res.info.best_residual, Inf) < 1e-8
+    #res = solve!(prob, copy(initial), DFSANE(), NEqOptions())
+    #res = solve!(prob, copy(initial), InexactNewton(), NEqOptions())    
+end
+
+
+
 end
