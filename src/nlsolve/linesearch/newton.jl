@@ -24,7 +24,7 @@ function solve!(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Sta
 
     stoptol = T(options.f_reltol)*ρF0 + T(options.f_abstol)
     if ρF0 < stoptol
-        return x, Fx, 0
+        return ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, iter=0, time=time()-t0), options)
     end
 
     # Create variable for norms but keep the first ones for printing purposes.

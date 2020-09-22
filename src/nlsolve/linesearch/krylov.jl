@@ -130,7 +130,7 @@ function solve!(problem::NEqProblem, x, method::InexactNewton, options::NEqOptio
 
         xp .= 0
         krylov_iter = IterativeSolvers.gmres_iterable!(xp, JvOp, Fx; maxiter=50)
-        local res
+        res = copy(Fx)
         rhs = ηₖ*norm(Fx, 2)
         for item in krylov_iter
             res = krylov_iter.residual.current
