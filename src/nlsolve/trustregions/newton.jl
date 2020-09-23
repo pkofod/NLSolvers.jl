@@ -31,7 +31,6 @@ end
 function upto_hessian(nr::NormedResiduals, Fx, Jx, x)  #Fx is the gradient and Jx is the Hessian
   @show x
   @show Fx
-  @show Jx
   Fx, Jx = nr.F.FJ(nr.Fx, Jx, x)
   if nr.x !== nothing && !all(nr.x .== x)
     # this is just to grab them outside, but this hsould come from the convergence info perhaps?
@@ -66,6 +65,7 @@ function solve!(prob::NEqProblem, x, approach::TrustRegion{<:Union{SR1, DBFGS, B
     res = solve!(td, x, approach, MinOptions(maxiter=options.maxiter))
     # normed_residual to get Fx
     # f0*2 is wrong because it's 2norm
+    @show res.info
     newinfo = (zero=res.info.minimizer, best_residual=Fx_outer, ρF0=ρF0, ρ2F0=ρ2F0, time=res.info.time, iter=res.info.iter)
     return ConvergenceInfo(approach, newinfo, options)
 end
