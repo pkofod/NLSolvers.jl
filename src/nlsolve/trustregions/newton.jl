@@ -29,6 +29,9 @@ function upto_gradient(nr::NormedResiduals, Fx, x)
   return f, Fx
 end
 function upto_hessian(nr::NormedResiduals, Fx, Jx, x)  #Fx is the gradient and Jx is the Hessian
+  @show x
+  @show Fx
+  @show Jx
   Fx, Jx = nr.F.FJ(nr.Fx, Jx, x)
   if nr.x !== nothing && !all(nr.x .== x)
     # this is just to grab them outside, but this hsould come from the convergence info perhaps?

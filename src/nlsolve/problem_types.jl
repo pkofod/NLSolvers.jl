@@ -55,13 +55,14 @@ equations. Current options are:
 
   - `maxiter` [= 10000]: number of major iterations where appropriate
 """
-struct NEqOptions{T, Tmi}
+struct NEqOptions{T, Tmi, Call}
   f_limit::T
   f_abstol::T
   f_reltol::T
   maxiter::Tmi
+  callback::Call
 end
-NEqOptions(; f_limit=0.0, f_abstol=1e-8, f_reltol=1e-12, maxiter=10^4) = NEqOptions(f_limit, f_abstol, f_reltol, maxiter)
+NEqOptions(; f_limit=0.0, f_abstol=1e-8, f_reltol=1e-12, maxiter=10^4, callback=nothing) = NEqOptions(f_limit, f_abstol, f_reltol, maxiter, callback)
 function Base.show(io::IO, ci::ConvergenceInfo{<:Any, <:Any, <:NEqOptions})
   opt = ci.options
   info = ci.info
