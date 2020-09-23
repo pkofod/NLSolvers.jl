@@ -25,6 +25,8 @@ function theta(x)
 end
 
 function F_fletcher_powell!(Fx, x)
+        println("in F")
+        @show x
         if ( x[1]^2 + x[2]^2 == 0 )
             dtdx1 = 0;
             dtdx2 = 0;
@@ -33,10 +35,11 @@ function F_fletcher_powell!(Fx, x)
             dtdx2 =   x[1] / ( 2 * pi * ( x[1]^2 + x[2]^2 ) );
         end
         Fx[1] = -2000.0*(x[3]-10.0*theta(x))*dtdx1 +
-            200.0*(sqrt(x[1]^2+x[2]^2)-1)*x[1]/sqrt( x[1]^2+x[2]^2 );
+        200.0*(sqrt(x[1]^2+x[2]^2)-1)*x[1]/sqrt( x[1]^2+x[2]^2 );
         Fx[2] = -2000.0*(x[3]-10.0*theta(x))*dtdx2 +
-            200.0*(sqrt(x[1]^2+x[2]^2)-1)*x[2]/sqrt( x[1]^2+x[2]^2 );
+        200.0*(sqrt(x[1]^2+x[2]^2)-1)*x[2]/sqrt( x[1]^2+x[2]^2 );
         Fx[3] =  200.0*(x[3]-10.0*theta(x)) + 2.0*x[3];
+        @show Fx
     Fx
 end
 

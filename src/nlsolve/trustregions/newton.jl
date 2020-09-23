@@ -9,34 +9,37 @@ struct NormedResiduals{Tx, Tfx, Tf}
 end
 function value(nr::NormedResiduals, x)
   Fx = nr.F.F(x, nr.Fx)
-  if nr.x !== nothing && !all(nr.x .== x)
-    # this is just to grab them outside, but this hsould come from the convergence info perhaps?
-    nr.x .= x
-    nr.Fx .= Fx
-  end
+  
+  # this is just to grab them outside, but this hsould come from the convergence info perhaps?
+  nr.x .= x
+  nr.Fx .= Fx
+
   f = (norm(Fx)^2)/2
   return f
 end
 function upto_gradient(nr::NormedResiduals, Fx, x)
   Fx, Jx = nr.F.FJ(Fx, Fx*x', x)
-  if nr.x !== nothing && !all(nr.x .== x)
-    # this is just to grab them outside, but this hsould come from the convergence info perhaps?
-    nr.x .= x
-    nr.Fx .= Fx
-  end
+
+  # this is just to grab them outside, but this hsould come from the convergence info perhaps?
+  nr.x .= x
+  nr.Fx .= Fx
+
   f = (norm(Fx)^2)/2
   Fx .= Jx'*Fx
   return f, Fx
 end
 function upto_hessian(nr::NormedResiduals, Fx, Jx, x)  #Fx is the gradient and Jx is the Hessian
+  if length(x) <4
+
   @show x
   @show Fx
-  Fx, Jx = nr.F.FJ(nr.Fx, Jx, x)
-  if nr.x !== nothing && !all(nr.x .== x)
-    # this is just to grab them outside, but this hsould come from the convergence info perhaps?
-    nr.x .= x
-    nr.Fx .= Fx
   end
+  Fx, Jx = nr.F.FJ(nr.Fx, Jx, x)
+
+  # this is just to grab them outside, but this hsould come from the convergence info perhaps?
+  nr.x .= x
+  nr.Fx .= Fx
+
   f = (norm(Fx)^2)/2
   # this is the gradient
   Fx .= Jx'*Fx
@@ -57,7 +60,8 @@ function solve!(prob::NEqProblem, x, approach::TrustRegion{<:Union{SR1, DBFGS, B
     # and so we can extract it at the end as well?
     # xcache = copy(x).-1
     Fx_outer = copy(x)
-    x_outer = prevfloat.(x)
+    x_outer = copy(x)
+
     normed_residual = NormedResiduals(x_outer, Fx_outer, F)
     ρ2F0 = 2*value(normed_residual, x_outer)
     ρF0 = norm(normed_residual.Fx, Inf)
@@ -65,7 +69,10 @@ function solve!(prob::NEqProblem, x, approach::TrustRegion{<:Union{SR1, DBFGS, B
     res = solve!(td, x, approach, MinOptions(maxiter=options.maxiter))
     # normed_residual to get Fx
     # f0*2 is wrong because it's 2norm
+    if length(x) == 3
+
     @show res.info
+    end
     newinfo = (zero=res.info.minimizer, best_residual=Fx_outer, ρF0=ρF0, ρ2F0=ρ2F0, time=res.info.time, iter=res.info.iter)
     return ConvergenceInfo(approach, newinfo, options)
 end
