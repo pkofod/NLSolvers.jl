@@ -263,10 +263,8 @@ end
 
 
 
-const static_x0 = OPT_PROBS["fletcher_powell"]["staticarray"]["x0"]
+const static_x0 = OPT_PROBS["fletcher_powell"]["staticarray"]["x0"][1]
 const static_prob_qn = OPT_PROBS["fletcher_powell"]["staticarray"]["static"]
-
-
 @testset "no alloc static" begin
 
     @testset "no alloc" begin

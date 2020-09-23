@@ -29,11 +29,6 @@ function upto_gradient(nr::NormedResiduals, Fx, x)
   return f, Fx
 end
 function upto_hessian(nr::NormedResiduals, Fx, Jx, x)  #Fx is the gradient and Jx is the Hessian
-  if length(x) <4
-
-  @show x
-  @show Fx
-  end
   Fx, Jx = nr.F.FJ(nr.Fx, Jx, x)
 
   # this is just to grab them outside, but this hsould come from the convergence info perhaps?
@@ -65,6 +60,10 @@ function solve!(prob::NEqProblem, x, approach::TrustRegion{<:Union{SR1, DBFGS, B
     normed_residual = NormedResiduals(x_outer, Fx_outer, F)
     ρ2F0 = 2*value(normed_residual, x_outer)
     ρF0 = norm(normed_residual.Fx, Inf)
+    if length(x)==x
+      @show ρ2F0
+      @show ρF0
+    end
     td = OptimizationProblem(normed_residual)
     res = solve!(td, x, approach, MinOptions(maxiter=options.maxiter))
     # normed_residual to get Fx
