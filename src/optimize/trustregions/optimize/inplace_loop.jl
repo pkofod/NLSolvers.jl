@@ -24,7 +24,7 @@ function solve!(problem::OptimizationProblem, s0::Tuple, approach::TrustRegion, 
     while iter <= options.maxiter && !any(is_converged)
         iter += 1
         objvars, Δkp1, reject = iterate!(p, objvars, Δkp1, approach, problem, options, qnvars, false)
-        if length(x0) == 3 && iter > 20 && iter < 50
+        if length(x0) == 3 && iter > 160 && iter < 190
             @show objvars
         end
         # Check for convergence
