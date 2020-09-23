@@ -16,7 +16,6 @@ function solve!(problem::OptimizationProblem, s0::Tuple, approach::TrustRegion, 
     qnvars = QNVars(objvars.z, objvars.z)
     p = copy(objvars.x)
 
-
     objvars, Δkp1, reject = iterate!(p, objvars, Δk, approach, problem, options, qnvars, false)
 
     iter = 1
