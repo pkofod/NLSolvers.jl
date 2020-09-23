@@ -60,7 +60,7 @@ function solve!(prob::NEqProblem, x, approach::TrustRegion{<:Union{SR1, DBFGS, B
     normed_residual = NormedResiduals(x_outer, Fx_outer, F)
     ρ2F0 = 2*value(normed_residual, x_outer)
     ρF0 = norm(normed_residual.Fx, Inf)
-    if length(x)==x
+    if length(x)==3
       @show ρ2F0
       @show ρF0
     end
