@@ -132,10 +132,7 @@ function negate(problem::AbstractProblem, A)
 end
 function negate(::InPlace, A::AbstractArray)
   A .= .-A
-#  @inbounds for i in eachindex(A)
-#    A[i] = -A[i]
-#  end
-  A
+  return A
 end
 function negate(::OutOfPlace, A::AbstractArray)
   -A
