@@ -1,7 +1,7 @@
 using NLSolvers, SparseArrays, LinearAlgebra
 using Test
 @testset "optimization preconditioning" begin
-debug_print = false
+debug_print = true
 for N in (10, 50, 100, 150, 250)  
     if debug_print
         println("N = ", N)
