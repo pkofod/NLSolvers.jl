@@ -1,10 +1,10 @@
-using Revise
 using NLSolvers
 using LinearAlgebra
 using SparseDiffTools
 using SparseArrays
 using IterativeSolvers
 using ForwardDiff
+using Test
 @testset "optimization interface" begin
 # TODO
 # Make a more efficient MeritObjective that returns something that acts as the actual thing if requested (mostly for debug)
@@ -203,3 +203,99 @@ x0 = copy(OPT_PROBS["exponential"]["array"]["x0"])
 res = solve!(prob, x0, TrustRegion(SR1(Inverse()), NTR()), MinOptions())
 @test res.info.minimum == 2.0
 end
+
+const statictest_s0 = OPT_PROBS["himmelblau"]["staticarray"]["state0"]
+const statictest_prob = OptimizationProblem(OPT_PROBS["himmelblau"]["staticarray"]["static"]; inplace=false)
+@testset "staticopt" begin
+    res = solve(statictest_prob, statictest_s0, LineSearch(Newton()), MinOptions())
+    @allocated solve(statictest_prob, statictest_s0, LineSearch(Newton()), MinOptions())
+    alloc = @allocated solve(statictest_prob, statictest_s0, LineSearch(Newton()), MinOptions())
+    @test alloc == 0
+
+    _res = solve(statictest_prob, statictest_s0, LineSearch(Newton()), MinOptions())
+    _alloc = @allocated solve(statictest_prob, statictest_s0, LineSearch(Newton()), MinOptions())
+    @test _alloc == 0
+    @test norm(_res.info.∇fz, Inf) < 1e-8
+
+    _res = solve(statictest_prob, statictest_s0, LineSearch(Newton(), Backtracking()), MinOptions())
+    _alloc = @allocated solve(statictest_prob, statictest_s0, LineSearch(Newton(), Backtracking()), MinOptions())
+    @test _alloc == 0
+    @test norm(_res.info.∇fz, Inf) < 1e-8
+end
+
+@testset "newton" begin
+    test_x0 = [2.0, 2.0]
+    test_prob = OptimizationProblem(OPT_PROBS["himmelblau"]["array"]["mutating"]; inplace=true)
+    res = solve!(test_prob, copy(test_x0), LineSearch(Newton()), MinOptions())
+    @test norm(res.info.∇fz, Inf) < 1e-8
+
+    test_x0 = [2.0, 2.0]
+    test_prob = OptimizationProblem(OPT_PROBS["himmelblau"]["array"]["mutating"]; inplace=false)
+    res = solve(test_prob, test_x0, LineSearch(Newton()), MinOptions())
+    @test norm(res.info.∇fz, Inf) < 1e-8
+end
+@testset "Newton linsolve" begin
+    test_prob = OptimizationProblem(OPT_PROBS["himmelblau"]["array"]["mutating"]; inplace=true)
+    res_lu = solve!(test_prob, (copy([2.0,2.0]), [0.0 0.0;0.0 0.0]), LineSearch(Newton(; linsolve=(d, B, g)->ldiv!(d, lu(B), g))), MinOptions())
+    @test norm(res_lu.info.∇fz, Inf) < 1e-8
+    res_qr = solve!(test_prob, (copy([2.0,2.0]), [0.0 0.0;0.0 0.0]), LineSearch(Newton(; linsolve=(d, B, g)->ldiv!(d, qr(B), g))), MinOptions())
+    @test norm(res_qr.info.∇fz, Inf) < 1e-8
+  
+    test_prob = OptimizationProblem(OPT_PROBS["himmelblau"]["array"]["mutating"]; inplace=false)
+    res_qr = solve(test_prob, (copy([2.0,2.0]), [0.0 0.0;0.0 0.0]), LineSearch(Newton(; linsolve=(B, g)->qr(B)\g)), MinOptions())
+    @test norm(res_qr.info.∇fz, Inf) < 1e-8
+    test_prob = OptimizationProblem(OPT_PROBS["himmelblau"]["array"]["mutating"]; inplace=true)
+    res_lu = solve(test_prob, (copy([2.0,2.0]), [0.0 0.0;0.0 0.0]), LineSearch(Newton(; linsolve=(B, g)->lu(B)\g)), MinOptions())
+    @test norm(res_lu.info.∇fz, Inf) < 1e-8
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const static_x0 = OPT_PROBS["fletcher_powell"]["staticarray"]["x0"]
+const static_prob_qn = OPT_PROBS["fletcher_powell"]["staticarray"]["static"]
+
+
+@testset "no alloc static" begin
+
+    @testset "no alloc" begin
+        @allocated solve(static_prob_qn, static_x0, LineSearch(BFGS(Inverse()), Backtracking()), MinOptions())
+        _alloc = @allocated solve(static_prob_qn, static_x0, LineSearch(BFGS(Inverse()), Backtracking()), MinOptions())
+        @test _alloc == 0
+
+        solve(static_prob_qn, static_x0, LineSearch(BFGS(Direct()), Backtracking()), MinOptions())
+        _alloc = @allocated solve(static_prob_qn, static_x0, LineSearch(BFGS(Direct()), Backtracking()), MinOptions())
+        @test _alloc == 0
+
+        solve(static_prob_qn, static_x0, LineSearch(DFP(Inverse()), Backtracking()), MinOptions())
+        _alloc = @allocated solve(static_prob_qn, static_x0, LineSearch(DFP(Inverse()), Backtracking()), MinOptions())
+        @test _alloc == 0
+
+        solve(static_prob_qn, static_x0, LineSearch(DFP(Direct()), Backtracking()), MinOptions())
+        _alloc = @allocated solve(static_prob_qn, static_x0, LineSearch(DFP(Direct()), Backtracking()), MinOptions())
+        @test _alloc == 0
+
+        solve(static_prob_qn, static_x0, LineSearch(SR1(Inverse()), Backtracking()), MinOptions())
+        _alloc = @allocated solve(static_prob_qn, static_x0, LineSearch(SR1(Inverse()), Backtracking()), MinOptions())
+        @test _alloc == 0
+
+        solve(static_prob_qn, static_x0, LineSearch(SR1(Direct()), Backtracking()), MinOptions())
+        _alloc = @allocated solve(static_prob_qn, static_x0, LineSearch(SR1(Direct()), Backtracking()), MinOptions())
+        @test _alloc == 0
+    end
+end
+
+Random.seed!(4568532)
+solve(static_prob_qn, rand(3), Adam(), MinOptions(maxiter=1000))
+solve(static_prob_qn, rand(3), AdaMax(), MinOptions(maxiter=1000))

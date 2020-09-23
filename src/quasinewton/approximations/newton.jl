@@ -4,10 +4,11 @@ struct Newton{T1, Tlin} <: QuasiNewton{T1}
    linsolve::Tlin
 end
 hasprecon(::Newton) = NoPrecon()
-
 # struct DefaultSequence end
 DefaultNewtonLinsolve(B::Number, g) = B\g
-DefaultNewtonLinsolve(B, g) = B\g
+function DefaultNewtonLinsolve(B, g)
+  B\g
+end
 function DefaultNewtonLinsolve(d, B, g)
   d .= (B\g)
 end

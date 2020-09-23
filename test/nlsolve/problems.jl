@@ -34,9 +34,6 @@ NLE_PROBS["rosenbrock"]["array"]["x0"] = [-1.2, 1.0]
 NLE_PROBS["rosenbrock"]["array"]["mutating"] = NLSolvers.NEqObjective(F_rosenbrock!, J_rosenbrock!, FJ_rosenbrock!, Jvop_rosenbrock!)
 
 
-
-
-
 function F_powell_singular!(x::Vector, Fx::Vector, Jx::Union{Nothing, Matrix}=nothing)
     if !(Fx isa Nothing)
         Fx[1] = x[1] + 10x[2]
