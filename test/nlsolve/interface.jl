@@ -76,6 +76,12 @@ res = solve!(prob, x0, TrustRegion(Newton()), NEqOptions())
 
 x0 = [-1.0, 0.0, 0.0]
 res = solve!(prob, x0, TrustRegion(SR1()), NEqOptions())
+x0 = [-1.0, 0.0, 0.0]
+res = solve!(prob, x0, TrustRegion(SR1()), NEqOptions())
+x0 = [-1.0, 0.0, 0.0]
+res = solve!(prob, x0, TrustRegion(SR1()), NEqOptions())
+x0 = [-1.0, 0.0, 0.0]
+res = solve!(prob, x0, TrustRegion(SR1()), NEqOptions())
 @test norm(res.info.best_residual, Inf) < 1e-10
 
 x0 = [-1.0, 0.0, 0.0]
