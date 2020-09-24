@@ -12,26 +12,29 @@ end
 # defaults for c's are from the flowchart of page 1370, σ's are from the bottom of 1370  
 APSO(; n_particles=nothing, limit_search_space=false, elitist_learning=true, c₁=2.0, c₂=2.0, σmin=0.1, σmax=1.0) = 
   APSO(n_particles, limit_search_space, elitist_learning, c₁, c₂, σmin, σmax)
-function solve!(problem::OptimizationProblem, x0, method::APSO, options::MinOptions)
+function solve(problem::OptimizationProblem, x0, method::APSO, options::MinOptions)
+    if !(mstyle(problem) === InPlace())
+        throw(ErrorException("solve() not defined for OutOfPlace() with Anderson"))
+    end
     t0 = time()
     n_particles = method.n_particles isa Nothing ? max(length(x0), 5) : method.n_particles
-  lower, upper = lowerbounds(problem), upperbounds(problem)
+    lower, upper = lowerbounds(problem), upperbounds(problem)
 
-  T, n = eltype(x0), length(x0)
+    T, n = eltype(x0), length(x0)
 
-  c₁, c₂, σmin, σmax = T(method.c₁), T(method.c₂), T(method.σmin), T(method.σmax)
-  ω = T(9)/10 # see page 1368
+    c₁, c₂, σmin, σmax = T(method.c₁), T(method.c₂), T(method.σmin), T(method.σmax)
+    ω = T(9)/10 # see page 1368
 
-  X, V = [copy(x0) for i = 1:n_particles], [x0*T(0) for i = 1:n_particles]
-  X_best = [x0*T(0) for i = 1:n_particles]
+    X, V = [copy(x0) for i = 1:n_particles], [x0*T(0) for i = 1:n_particles]
+    X_best = [x0*T(0) for i = 1:n_particles]
 
-  Fs, Fs_best = zeros(T, n_particles), zeros(T, n_particles)
+    Fs, Fs_best = zeros(T, n_particles), zeros(T, n_particles)
 
-  x = copy(x0)
-  if method.elitist_learning
-    x_learn = copy(x0)
-  end
-  current_state = 0
+    x = copy(x0)
+    if method.elitist_learning
+      x_learn = copy(x0)
+    end
+    current_state = 0
 
   # spread the initial population uniformly over the whole search space
   width = upper .- lower

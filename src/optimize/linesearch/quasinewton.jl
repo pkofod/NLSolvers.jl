@@ -6,29 +6,25 @@ end
 function QNVars(x, g)
     QNVars(copy(g), copy(x), copy(x))
 end
-function preallocate_qn_caches_inplace(x0)
-    # Maintain gradient and state pairs in QNVars
-    cache = QNVars(x0, x0)
-    return cache
+function preallocate_qn_caches(mstyle, x0)
+    if mstyle === InPlace()
+        # Maintain gradient and state pairs in QNVars
+        cache = QNVars(x0, x0)
+        return cache
+    else
+        return nothing
+    end
 end
 
-function solve(prob::OptimizationProblem, x0, approach::LineSearch, options::MinOptions)
-    _solve(OutOfPlace(), prob, (x0, nothing), approach, options, nothing)
+function solve(problem::OptimizationProblem, x0, approach::LineSearch, options::MinOptions, cache=preallocate_qn_caches(mstyle(problem), x0))
+    _solve(mstyle(problem), problem, (x0, nothing), approach, options, cache)
 end
-function solve(prob::OptimizationProblem, s0::Tuple, approach::LineSearch, options::MinOptions)
-    _solve(OutOfPlace(), prob, s0, approach, options, nothing)
-end
-
-function solve!(prob::OptimizationProblem, x0, approach::LineSearch, options::MinOptions, cache=QNVars(x0, x0))
-    _solve(InPlace(), prob, (x0, nothing), approach, options, cache)
-end
-function solve!(prob::OptimizationProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache=QNVars(first(s0), first(s0)))
-    _solve(InPlace(), prob, s0, approach, options, cache)
+function solve(problem::OptimizationProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache=preallocate_qn_caches(mstyle(problem), first(s0)))
+    _solve(mstyle(problem), problem, s0, approach, options, cache)
 end
 
-function _solve(mstyle, prob::OptimizationProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache)
+function _solve(mstyle, problem::OptimizationProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache)
 #    global_logger(options.logger)
-
     t0 = time()
 
     #==============
@@ -37,20 +33,20 @@ function _solve(mstyle, prob::OptimizationProblem, s0::Tuple, approach::LineSear
     x0, B0 = s0
     T = eltype(x0)
     
-    objvars = prepare_variables(prob, approach, x0, copy(x0), B0)
+    objvars = prepare_variables(problem, approach, x0, copy(x0), B0)
     P = initial_preconditioner(approach, x0)
     f0, ∇f0 = objvars.fz, norm(objvars.∇fz, Inf) # use user norm
 
     if any(initial_converged(approach, objvars, ∇f0, options))
         x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
-        return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), solver=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=0, time=time()-t0), options)
+        return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=0, time=time()-t0), options)
     end
     qnvars = QNVars(copy(objvars.∇fz), copy(objvars.∇fz), copy(objvars.∇fz))
 
     #==============================
              First iteration
     ==============================#
-    objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, prob, options)
+    objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, problem, options)
     iter = 1
     # Check for gradient convergence
     is_converged = converged(approach, objvars, ∇f0, options)
@@ -60,7 +56,7 @@ function _solve(mstyle, prob::OptimizationProblem, s0::Tuple, approach::LineSear
         #==============================
                      iterate
         ==============================#
-        objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, prob, options, false)
+        objvars, P, qnvars = iterate(mstyle, qnvars, objvars, P, approach, problem, options, false)
         #==============================
                 check convergence
         ==============================#
@@ -68,7 +64,7 @@ function _solve(mstyle, prob::OptimizationProblem, s0::Tuple, approach::LineSear
         print_trace(approach, options, iter, t0, objvars)
     end
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
-    return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), solver=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
+    return ConvergenceInfo(approach, (P=P, B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
 function print_trace(approach::LineSearch, options, iter, t0, objvars)
     if !isa(options.logger, NullLogger) 

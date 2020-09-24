@@ -49,7 +49,10 @@ function upto_hessian(nr::NormedResiduals, Fx, Jx, x)  #Fx is the gradient and J
     return f, Fx, Jx
 end
 
-function solve!(prob::NEqProblem, x, approach::TrustRegion{<:Union{SR1, DBFGS, BFGS, Newton}, <:Any, <:Any}, options::NEqOptions)
+function solve(prob::NEqProblem, x, approach::TrustRegion{<:Union{SR1, DBFGS, BFGS, Newton}, <:Any, <:Any}, options::NEqOptions)
+    if !(mstyle(prob) === InPlace())
+        throw(ErrorException("solve() not defined for OutOfPlace() with Trustregion for NEqProblem"))
+    end
     F = prob.R
     # should we wrap a Fx here so we can log F0 info here?
     # and so we can extract it at the end as well?
@@ -61,7 +64,7 @@ function solve!(prob::NEqProblem, x, approach::TrustRegion{<:Union{SR1, DBFGS, B
     ρ2F0 = 2*value(normed_residual, x_outer)
     ρF0 = norm(normed_residual.Fx, Inf)
     td = OptimizationProblem(normed_residual)
-    res = solve!(td, x, approach, MinOptions(maxiter=options.maxiter))
+    res = solve(td, x, approach, MinOptions(maxiter=options.maxiter))
     # normed_residual to get Fx
     # f0*2 is wrong because it's 2norm
     newinfo = (zero=res.info.minimizer, best_residual=Fx_outer, ρF0=ρF0, ρ2F0=ρ2F0, time=res.info.time, iter=res.info.iter)

@@ -1,5 +1,7 @@
-function solve!(prob::NEqProblem, x, method::Anderson, options::NEqOptions)
-  
+function solve(prob::NEqProblem, x, method::Anderson, options::NEqOptions)
+    if !(mstyle(prob) === InPlace())
+        throw(ErrorException("solve() not defined for OutOfPlace() with Anderson"))
+    end
     function fixedfromnleq(F, x)
         F .= value(prob, F, x) .+ x
     end

@@ -186,17 +186,12 @@ end
 
 
 # using an "initial vectors" function we can initialize s if necessary or nothing if not to save on vectors
-function solve!(problem::OptimizationProblem, x0, cg::ConjugateGradient, options::MinOptions)
-
-  _solve(problem, x0, LineSearch(cg, HZAW()), options, InPlace())
+function solve(problem::OptimizationProblem, x0, cg::ConjugateGradient, options::MinOptions)
+  _solve(problem, x0, LineSearch(cg, HZAW()), options, mstyle(problem))
 end
-solve!(problem::OptimizationProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) =
-  _solve(problem, x0, approach, options, InPlace())
-solve(problem::OptimizationProblem, x0, cg::ConjugateGradient, options::MinOptions) =
-  _solve(problem, x0, LineSearch(cg, HZAW()), options, OutOfPlace())
-solve(problem::OptimizationProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions) =
-  _solve(problem, x0, approach, options, OutOfPlace())
-
+function solve(problem::OptimizationProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions)
+  _solve(problem, x0, approach, options, mstyle(problem))
+end
 function _solve(problem::OptimizationProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions, mstyle::MutateStyle)
     t0 = time()
     #==============
@@ -219,7 +214,7 @@ function _solve(problem::OptimizationProblem, x0, approach::LineSearch{<:Conjuga
         is_converged = converged(approach, objvars, ∇f0, options) 
     end
     x, fx, ∇fx, z, fz, ∇fz, B = objvars
-    return ConvergenceInfo(approach, (beta=β, ρs=norm(x.-z), ρx=norm(x), solver=z, fx=fx, minimum=fz, ∇fx=∇fx, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=k, time=time()-t0), options)
+    return ConvergenceInfo(approach, (beta=β, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fx=∇fx, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=k, time=time()-t0), options)
 end
 function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, problem::OptimizationProblem, options::MinOptions, P=nothing, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search

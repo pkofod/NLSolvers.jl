@@ -46,7 +46,11 @@ function safeguard_σ(σ::T, σmin, σmax, F) where T
 end
 
 struct DFSANE end
-function solve!(prob::NEqProblem, x0, method::DFSANE, options::NEqOptions)
+function solve(prob::NEqProblem, x0, method::DFSANE, options::NEqOptions)
+  if !(mstyle(prob) === InPlace())
+    throw(ErrorException("solve() not defined for OutOfPlace() with DFSANE"))
+  end
+
   t0 = time()
   F = prob.R.F
   T = eltype(x0)
