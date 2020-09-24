@@ -199,7 +199,7 @@ res = solve!(prob, x0, TrustRegion(Newton(), NWI()), MinOptions())
 
 x0 = copy(OPT_PROBS["exponential"]["array"]["x0"])
 res = solve!(prob, x0, TrustRegion(SR1(), NTR()), MinOptions())
-@test_broken res.info.minimum == 2.0
+@test res.info.minimum == 2.0
 
 x0 = copy(OPT_PROBS["exponential"]["array"]["x0"])
 res = solve!(prob, x0, TrustRegion(SR1(Inverse()), NTR()), MinOptions())
