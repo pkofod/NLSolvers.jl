@@ -5,6 +5,8 @@ using SparseArrays
 using IterativeSolvers
 using ForwardDiff
 using Test
+@show BLAS.openblas_get_config()
+
 @testset "optimization interface" begin
 # TODO
 # Make a more efficient MeritObjective that returns something that acts as the actual thing if requested (mostly for debug)
