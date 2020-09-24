@@ -171,6 +171,125 @@ for x0 in X0
     #res = solve!(prob, copy(initial), InexactNewton(), NEqOptions())    
 end
 
+@testset "fixedpoints" begin
+function G(x, Gx)
+    V1 = [1.0, 0.0] .+ 0.99*[0.1 0.9; 0.5 0.5]*x
+    V2 = [0.0, 2.0] .+ 0.99*[0.5 0.5; 1.0 0.0]*x
+    K = max(maximum(V1), maximum(V2))
+    Gx .= K .+ log.(exp.(V1 .- K) .+ exp.(V2 .- K))
+  end
+  fp1 = NLSolvers.fixedpoint!(G, zeros(2), Anderson(10000000,1, nothing,nothing))
+  fp2 = NLSolvers.fixedpoint!(G, zeros(2), Anderson(2, 2, 0.3, 1e2))
+  fp3 = NLSolvers.fixedpoint!(G, zeros(2), Anderson(2, 2, 0.01, 1e2))
+  @test all(fp1.x .≈ fp2.x)
+  @test all(fp1.x .≈ fp3.x)
+  
+  fp1 = NLSolvers.solve!(NEqProblem((x, F)->G(x, F).-x), zeros(2), Anderson(10000000,1, nothing,nothing))
+  fp2 = NLSolvers.solve!(NEqProblem((x, F)->G(x, F).-x), zeros(2), Anderson(2, 2, 0.3, 1e2))
+  fp3 = NLSolvers.solve!(NEqProblem((x, F)->G(x, F).-x), zeros(2), Anderson(2, 2, 0.01, 1e2))
+  @test all(fp1.x .≈ fp2.x)
+  @test all(fp1.x .≈ fp3.x)
+end  
 
+
+@testset "complementarity" begin
+# using NLsolve
+
+# M = [0  0 -1 -1 ;
+#      0  0  1 -2 ;
+#      1 -1  2 -2 ;
+#      1  2 -2  4 ]
+
+# q = [2; 2; -2; -6]
+
+# function f!(x, fvec)
+#     fvec = M * x + q
+# end
+
+
+# r = mcpsolve(f!, [0., 0., 0., 0.], [Inf, Inf, Inf, Inf],
+#              [1.25, 0., 0., 0.5], reformulation = :smooth, autodiff = true)
+
+# x = r.zero  # [1.25, 0.0, 0.0, 0.5]
+# @show dot( M*x + q, x )  # 0.5
+
+# sol = [2.8, 0.0, 0.8, 1.2]
+# @show dot( M*sol + q, sol )  # 0.0
+
+end
+end
+
+@testset "lsqfit" begin
+# boxbod_f(x, b) = b[1]*(1-exp(-b[2]*x))
+
+# ydata = [109, 149, 149, 191, 213, 224]
+# xdata = [1, 2, 3, 5, 7, 10]
+
+# start1 = [1.0, 1.0]
+# start2 = [100.0, 0.75]
+
+# using Plots
+# using NLSolvers
+
+# nd = NonDiffed(t->sum(abs2, boxbod_f.(xdata, Ref(t)).-ydata))
+# bounds = (fill(0.0, 2), fill(500.0, 2))
+# problem = MinProblem(; obj=nd, bounds=bounds)
+# @show minimize!(problem, zeros(2), APSO(), MinOptions())
+# @show minimize!(nd, [200.0, 1], NelderMead(), MinOptions())
+
+# @show minimize!(nd, minimize!(nd, [200.0, 10.0], NelderMead(), MinOptions()).info.minimizer, NelderMead(), MinOptions())
+# @show minimize!(nd, minimize!(nd, [200.0, 5.0], NelderMead(), MinOptions()).info.minimizer, NelderMead(), MinOptions())
+
+# function F(b, F, J=nothing)
+#   @. F = b[1]*(1 - exp(-b[2]*xdata)) - ydata
+#   if !isa(J, Nothing)
+#   	@. J[:, 1] = 1 - exp(-b[2]*xdata)
+#   	@. @views J[:, 2] = xdata*b[1]*(J[:, 1]-1)
+#     return F, J
+#   end
+#   F
+# end
+
+# Fc = zeros(6)
+# minimize!(lsqwrap, [100.0, 1.0], NelderMead(), MinOptions())
+
+# lsqwrap = NLSolvers.LsqWrapper(F, zeros(6), zeros(6,2))
+# minimize!(MinProblem(;obj=lsqwrap,bounds=([0.0,0.0],[250.0,2.0])), [100.0, 1.0], APSO(), MinOptions())
+
+# function F(F, b)
+#   @. F = b[1]*(1 - exp(-b[2]*xdata)) - ydata
+
+#   F
+# end
+# function F(J, F, b)
+#   @. F = b[1]*(1 - exp(-b[2]*xdata)) - ydata
+#   if !isa(J, Nothing)
+#   	@. J[:, 1] = 1 - exp(-b[2]*xdata)
+#   	@. @views J[:, 2] = xdata*b[1]*(J[:, 1]-1)
+#     return F, J
+#   end
+#   F
+# end
+# OnceDiffed(F)(rand(2), rand(6), rand(6,2)
+
+# Fc = zeros(6)
+
+
+# lsqwrap = NLSolvers.LsqWrapper(OnceDiffed(F), zeros(6), zeros(6,2))
+# minimize!(lsqwrap, [100.0, 1.0], LineSearch(LBFGS()), MinOptions())
+
+
+# #using Plots
+# #theme(:ggplot2)
+# #gr(size=(500,500))
+# #X = range(000.0, 350.0; length=420)
+# #Y = range(0.0, 3.00; length=420)
+# #contour(X, Y, (x, y)->nd([x, y]);
+# #       fill=true,
+# #       c=:turbid,levels=200, ls=:dash,
+# #       xlims=(minimum(X), maximum(X)),
+# #       ylims=(minimum(Y), maximum(Y)),
+# #       colorbar=true)
+    
 
 end

@@ -42,7 +42,7 @@ end
 function update!(scheme::SR1{<:Direct}, B, s, y)
    T = real(eltype(s))
    res = y - B*s
-   θ = dot(res, s) # angle between residual and change in state
+@show   θ = dot(res, s) # angle between residual and change in state
    if abs(θ) ≥ max(T(1e-12)*norm(res, 2)*norm(s, 2), sqrt(eps(T)))
       if true #abs(θ) ≥ 1e-12
          B .= B .+ (res*res')/θ
