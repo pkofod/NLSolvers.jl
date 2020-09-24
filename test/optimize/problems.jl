@@ -165,6 +165,7 @@ function theta(x)
 end
 
 function fletcher_powell_f(x)
+    theta_x = theta(x)
     fx = 100.0 * ((x[3] - 10.0 * theta_x)^2 + (sqrt(x[1]^2 + x[2]^2) - 1.0)^2) + x[3]^2
     return fx
 end
@@ -210,7 +211,7 @@ function fletcher_powell_fg(∇f, x)
 
     return fx, ∇f
 end
-const sv3 = @SVector[0.0,0.0,0.0]
+const sv3 = @SVector[0.1,0.0,0.0]
 
 const fp_static = ScalarObjective(fletcher_powell_f, fletcher_powell_g, fletcher_powell_fg, nothing, nothing, nothing, nothing, nothing)
 
@@ -218,5 +219,5 @@ const state0 = (@SVector[-0.5, 0.0, 0.0], I+sv3*sv3')
 OPT_PROBS["fletcher_powell"] = Dict()
 OPT_PROBS["fletcher_powell"]["staticarray"] = Dict()
 # Byttet om på x og H
-OPT_PROBS["fletcher_powell"]["staticarray"]["x0"] = sv3
+OPT_PROBS["fletcher_powell"]["staticarray"]["x0"] = state0
 OPT_PROBS["fletcher_powell"]["staticarray"]["static"] = OptimizationProblem(fp_static; inplace=false)
