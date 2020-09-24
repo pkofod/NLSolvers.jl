@@ -94,7 +94,10 @@ InexactNewton(; force_seq=DemboSteihaug(), eta0 = 1e-4, maxiter=300)=InexactNewt
 η(fft::InexactNewton, info) = η(fft.force_seq, info)
 
 
-function solve!(problem::NEqProblem, x, method::InexactNewton, options::NEqOptions)
+function solve(problem::NEqProblem, x, method::InexactNewton, options::NEqOptions)
+    if !(mstyle(prob) === InPlace())
+        throw(ErrorException("solve() not defined for OutOfPlace() with InexactNewton"))
+    end
     t0 = time()
 
     F = problem.R.F

@@ -21,20 +21,20 @@ TrustRegion(m, sp=NTR(); deltamin=nothing) = TrustRegion(m, sp, BTR(deltamin))
 modelscheme(tr::TrustRegion) = tr.scheme
 algorithm(tr::TrustRegion) = tr.spsolve
 
-solve!(problem::OptimizationProblem, x0, scheme, options::MinOptions) =
-  solve!(problem, (x0, nothing), TrustRegion(scheme, NWI()), options)
+solve(problem::OptimizationProblem, x0, scheme, options::MinOptions) =
+  solve(problem, (x0, nothing), TrustRegion(scheme, NWI()), options)
 
-solve!(problem::OptimizationProblem{<:Any, <:Nothing, <:Nothing, <:Nothing}, x0, approach::TrustRegion, options::MinOptions) =
-  solve!(problem, (x0, nothing), approach, options)
+solve(problem::OptimizationProblem{<:Any, <:Nothing, <:Nothing, <:Nothing}, x0, approach::TrustRegion, options::MinOptions) =
+  solve(problem, (x0, nothing), approach, options)
 
-solve!(problem::OptimizationProblem{<:Any, <:Nothing, <:Nothing, <:Nothing}, s0::Tuple, approach::TrustRegion, options::MinOptions) =
-  solve!(problem, s0, approach, options)
+solve(problem::OptimizationProblem{<:Any, <:Nothing, <:Nothing, <:Nothing}, s0::Tuple, approach::TrustRegion, options::MinOptions) =
+  solve(problem, s0, approach, options)
 
-function solve!(problem::OptimizationProblem, x0, scheme::Newton, options::MinOptions)
-    solve!(problem, (x0, nothing), TrustRegion(scheme, NTR()), options)
+function solve(problem::OptimizationProblem, x0, scheme::Newton, options::MinOptions)
+    solve(problem, (x0, nothing), TrustRegion(scheme, NTR()), options)
 end
-function solve!(problem::OptimizationProblem, x0, approach::TrustRegion, options::MinOptions)
-    solve!(problem, (x0, nothing), approach, options)
+function solve(problem::OptimizationProblem, x0, approach::TrustRegion, options::MinOptions)
+    solve(problem, (x0, nothing), approach, options)
 end
 include("optimize/inplace_loop.jl")
 include("optimize/outofplace_loop.jl")

@@ -41,8 +41,7 @@ using RandomNumbers
 using Printf
 
 function solve end
-function solve! end
-export solve, solve!
+export solve
 """
 
 """
@@ -119,7 +118,7 @@ include("fixedpoints/root.jl")
 export Anderson
 
 include("nlsolve/root.jl")
-export nlsolve, nlsolve!, NEqProblem, NEqOptions
+export NEqProblem, NEqOptions
 export InexactNewton, KrylovNEqProblem
 export DFSANE
 include("nlsolve/acceleration/anderson.jl")
@@ -158,6 +157,14 @@ end
 # shouldn't have those here
 function _retract(::InPlace, manifold::Euclidean, z, x, p, α)
     @. z = x + α*p
+    return z
+  end
+function _retract(::OutOfPlace, manifold::Euclidean, z, x, p, α)
+    z = @. x + α*p
+    return z
+end
+function _retract(::InPlace, manifold::Euclidean, z, x, p)
+    @. z = x + p
     return z
   end
 function _retract(::OutOfPlace, manifold::Euclidean, z, x, p)

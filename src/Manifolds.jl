@@ -62,13 +62,13 @@ end
 retract(M::Euclidean, x, v, t::Real) = x+t*v
 
 function retract(M::Manifold, x, v, method::AbstractRetractionMethod)
-    xr = similar_result(M, retract, x, v)
+    xr = copy(x)
     retract!(M, xr, x, v, method)
     return xr
 end
 
 function retract(M::Manifold, x, v)
-    xr = similar_result(M, retract, x, v)
+    xr = copy(x)
     retract!(M, xr, x, v)
     return xr
 end

@@ -63,8 +63,8 @@ prob_obj = NLSolvers.NEqObjective(F_powell!, nothing, F_jacobian_powell!, jvop)
 
 prob = NEqProblem(prob_obj)
 x0 = [-1.0, 0.0, 0.0]
-solve!(prob, x0, LineSearch(Newton(), Backtracking()))
-solve!(prob, x0, InexactNewton(FixedForceTerm(0.4), 1e-12, 300), NEqOptions(maxiter=1))
+solve(prob, x0, LineSearch(Newton(), Backtracking()))
+solve(prob, x0, InexactNewton(FixedForceTerm(0.4), 1e-12, 300), NEqOptions(maxiter=1))
 
 function f_2by2!(F, x)
     F[1] = (x[1]+3)*(x[2]^3-7)+18
@@ -82,7 +82,7 @@ function g_2by2!(J, x)
 end
 
 FJacOp2 = OnceDiffedJv(f_2by2!; seed=rand(2))
-solve!(FJacOp2, rand(2), ResidualKrylov(FixedForceTerm(0.4), 1e-3, 300))
+solve(FJacOp2, rand(2), ResidualKrylov(FixedForceTerm(0.4), 1e-3, 300))
 
 
 

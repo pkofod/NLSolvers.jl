@@ -109,6 +109,9 @@ function NelderMead()
     return NelderMead(0, x->(1.0, 2.0, 0.5, 0.5), nothing)
 end
 Base.summary(::NelderMead) = "Nelder-Mead"
+function solve(prob::OptimizationProblem, x0, method::NelderMead, options::MinOptions)
+    solve(mstyle(prob), prob, x0, method, ABA(x0.*0 .+ 1), options)
+end
 
 # centroid except h-th vertex
 function centroid!(c, simplex_vector, h=0)
@@ -137,15 +140,12 @@ struct ValuedSimplex{TS, TV, TO}
 end
 ValuedSimplex(S, V) = ValuedSimplex(S, V, sortperm(V))
 
-function solve!(prob::OptimizationProblem, x0, method::NelderMead, options::MinOptions)
-  solve!(prob, x0, method, ABA(x0.*0 .+ 1), options)
-end
-function solve!(prob::OptimizationProblem, x0, method::NelderMead, as::AbstractSimplexer, options)
+function solve(mstyle::InPlace, prob::OptimizationProblem, x0, method::NelderMead, as::AbstractSimplexer, options)
     simplex_vector = initial_simplex(as, x0)
     simplex_value = batched_value(prob, simplex_vector) # this could be batched
     order = sortperm(simplex_value)
     simplex = ValuedSimplex(simplex_vector, simplex_value, order)
-    res = solve!(prob, simplex, method, options)
+    res = solve(mstyle, prob, simplex, method, options)
     x0 .= res.info.minimizer
     return res
 end
@@ -157,7 +157,7 @@ function NMCaches(simplex)
     return (x_reflect=x_reflect, x_cache=x_cache, x_centroid=x_centroid)
 end
 
-function solve!(prob::OptimizationProblem, simplex::ValuedSimplex, method::NelderMead, options::MinOptions, nmcache=NMCaches(simplex))
+function solve(mstyle::InPlace, prob::OptimizationProblem, simplex::ValuedSimplex, method::NelderMead, options::MinOptions, nmcache=NMCaches(simplex))
     t0 = time()
     simplex_vector, simplex_value, i_order = simplex.S, simplex.V, simplex.O
     f0 = minimum(simplex.V)
@@ -290,19 +290,15 @@ end
 #####################
 #    out-of-place   #
 #####################
-function solve(prob::OptimizationProblem, x0, method::NelderMead, options::MinOptions)
-    solve(prob, copy(x0), method, ABA(x0.*0 .+ 1), options)
-end
-function solve(prob::OptimizationProblem, x0, method::NelderMead, as::AbstractSimplexer, options::MinOptions)
+function solve(mstyle::OutOfPlace, prob::OptimizationProblem, x0, method::NelderMead, as::AbstractSimplexer, options::MinOptions)
     simplex_vector = initial_simplex(as, copy(x0))
     simplex_value = batched_value(prob, simplex_vector) # this could be batched
     order = sortperm(simplex_value)
     simplex = ValuedSimplex(simplex_vector, simplex_value, order)
-    res = solve(prob, simplex, method, options)
-    x0 .= res.info.minimizer
+    res = solve(mstyle, prob, simplex, method, options)
     return res
 end
-function solve(prob::OptimizationProblem, simplex::ValuedSimplex, method::NelderMead, options::MinOptions)
+function solve(mstyle::OutOfPlace, prob::OptimizationProblem, simplex::ValuedSimplex, method::NelderMead, options::MinOptions)
     t0 = time()
     simplex_vector, simplex_value = simplex.S, simplex.V
     n = length(first(simplex_vector))

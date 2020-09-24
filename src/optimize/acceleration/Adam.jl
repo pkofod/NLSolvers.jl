@@ -39,7 +39,7 @@ end
 AdaMax(;alpha=0.002, beta_mean=0.9, beta_var=0.999) = AdaMax(alpha, beta_mean, beta_var)
 
 
-function solve(problem::OptimizationProblem, x0, adam::Adam, options)
+function solve(problem::OptimizationProblem, x0, adam::Adam, options::MinOptions)
   α, β₁, β₂, ϵ = adam.α, adam.β₁, adam.β₂, adam.ϵ
   t0 = time()
 
@@ -69,9 +69,9 @@ function solve(problem::OptimizationProblem, x0, adam::Adam, options)
     fz, ∇fz = upto_gradient(problem, ∇fz, z)
     is_converged = iter >= options.maxiter
   end
-  ConvergenceInfo(adam, (solver=z, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
+  ConvergenceInfo(adam, (minimizer=z, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
-function solve(problem::OptimizationProblem, x0, adam::AdaMax, options)
+function solve(problem::OptimizationProblem, x0, adam::AdaMax, options::MinOptions)
   α, β₁, β₂ = adam.α, adam.β₁, adam.β₂
   t0 = time()
 
@@ -95,5 +95,5 @@ function solve(problem::OptimizationProblem, x0, adam::AdaMax, options)
     fz, ∇fz = upto_gradient(problem, ∇fz, z)
     is_converged = iter >= options.maxiter
   end
-  ConvergenceInfo(adam, (solver=z, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
+  ConvergenceInfo(adam, (minimizer=z, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end

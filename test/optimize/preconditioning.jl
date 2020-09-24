@@ -16,7 +16,7 @@ for N in (10, 50, 100, 150, 250)
             if debug_print
                 println(summary(optimizer(P)))
             end
-            results = solve!(OPT_PROBS["laplacian"]["array"]["mutating"], copy(initial_x), optimizer(P), MinOptions(g_abstol=1e-6))
+            results = solve(OPT_PROBS["laplacian"]["array"]["mutating"], copy(initial_x), optimizer(P), MinOptions(g_abstol=1e-6))
             push!(mino, results.info.minimum)
             push!(iter, results.info.iter)
         end

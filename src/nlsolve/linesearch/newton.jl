@@ -1,7 +1,11 @@
 # make this keyworded?
 init(::NEqProblem, ::LineSearch, x) = (z=copy(x), d=copy(x), Fx=copy(x), Jx=x*x')
 # the bang is just potentially inplace x and state. nonbang copies these
-function solve!(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Static(1)), options=NEqOptions(), state=init(prob, method, x))
+function solve(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Static(1)), options=NEqOptions(), state=init(prob, method, x))
+    if !(mstyle(prob) === InPlace())
+        throw(ErrorException("solve() not defined for OutOfPlace() with LineSearch and Newton"))
+    end
+
     t0 = time()
     
     # Unpack

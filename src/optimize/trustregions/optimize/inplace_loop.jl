@@ -1,4 +1,7 @@
-function solve!(problem::OptimizationProblem, s0::Tuple, approach::TrustRegion, options::MinOptions)
+function solve(problem::OptimizationProblem, s0::Tuple, approach::TrustRegion, options::MinOptions)
+    if !(mstyle(problem) === InPlace())
+        throw(ErrorException("solve() not defined for OutOfPlace() with Anderson"))
+    end
     t0 = time()
     x0, B0 = s0
     T = eltype(x0)
