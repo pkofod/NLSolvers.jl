@@ -79,10 +79,8 @@ NLE_PROBS["quantile"]["number"] = Dict()
     Fx, Jx
 end
 NLE_PROBS["quantile"]["number"]["x0"] = 0.5
-quantobj = NLSolvers.NEqObjective(quantile_f, quantile_j, quantile_fj, nothing)
 NLE_PROBS["quantile"]["number"]["mutating"] = quantobj
-quantprob = NEqProblem(NLE_PROBS["quantile"]["number"]["mutating"]; inplace=false)
-states = NLSolvers.init(quantprob, LineSearch(Newton()), 3.0)
+
 function f()
     quantile_f(Fx, x) = log(max(x, 0.000001))
     quantile_j(Jx, x) = 1.0/x
@@ -102,3 +100,19 @@ function f()
     @time res = solve(quantproblem, 0.4, method, options, state)
 end
 
+quantile_f(Fx, x) = log(max(x, 0.000001))
+quantile_j(Jx, x) = 1.0/x
+function quantile_fj(Fx, Jx, x)
+   Fx = quantile_f(Fx, x)
+   Jx = quantile_j(Jx, x)
+   Fx, Jx
+end
+const quantobj = NLSolvers.NEqObjective(quantile_f, quantile_j, quantile_fj, nothing)
+
+const quantproblem = NEqProblem(quantobj, nothing, NLSolvers.Euclidean(0), NLSolvers.OutOfPlace())
+
+method = LineSearch(Newton())
+options = NEqOptions()
+state = NLSolvers.init(quantproblem, method, 3.0)
+@time res = solve(quantproblem, 0.4, method, options, state)
+@time res = solve(quantproblem, 0.4, method, options, state)
