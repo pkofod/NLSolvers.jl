@@ -20,21 +20,21 @@ x0 = randn(n)+im*randn(n)
 
 
 ####### WTF ! Inplace takes 1000 iters and oop doesn't
-# solve(prob, x0, APSO(), MinOptions()) # fails
-solve(prob, x0, SimulatedAnnealing(), MinOptions())
-solve(prob, copy(x0), LineSearch(LBFGS(), Backtracking()), MinOptions()) # fails due to bounds
-solve(prob, copy(x0), LineSearch(LBFGS(), Backtracking()), MinOptions(g_abstol=1e-6)) # fails due to bounds
-solve(prob, copy(x0), LineSearch(LBFGS()), MinOptions(g_abstol=1e-6)) # fails due to bounds
-solve(prob, copy(x0), LineSearch(LBFGS(), HZAW()), MinOptions(g_abstol=1e-6)) # fails due to bounds
-solve(prob, copy(x0), LineSearch(BFGS(), Backtracking()), MinOptions(g_abstol=1e-6)) # fails due to bounds
-solve(prob, copy(x0), LineSearch(BFGS()), MinOptions(g_abstol=1e-6)) # fails due to bounds
-solve(prob, copy(x0), LineSearch(BFGS(), HZAW()), MinOptions(g_abstol=1e-6)) # fails due to bounds
-solve(prob_oop, x0, LineSearch(BFGS(), Backtracking()), MinOptions(g_abstol=1e-6)) # fails due to bounds
-solve(prob_oop, x0, LineSearch(BFGS()), MinOptions(g_abstol=1e-6)) # fails due to bounds
-solve(prob_oop, x0, LineSearch(BFGS(), HZAW()), MinOptions(g_abstol=1e-6)) # fails due to bounds
+# solve(prob, x0, APSO(), OptimizationOptions()) # fails
+solve(prob, x0, SimulatedAnnealing(), OptimizationOptions())
+solve(prob, copy(x0), LineSearch(LBFGS(), Backtracking()), OptimizationOptions()) # fails due to bounds
+solve(prob, copy(x0), LineSearch(LBFGS(), Backtracking()), OptimizationOptions(g_abstol=1e-6)) # fails due to bounds
+solve(prob, copy(x0), LineSearch(LBFGS()), OptimizationOptions(g_abstol=1e-6)) # fails due to bounds
+solve(prob, copy(x0), LineSearch(LBFGS(), HZAW()), OptimizationOptions(g_abstol=1e-6)) # fails due to bounds
+solve(prob, copy(x0), LineSearch(BFGS(), Backtracking()), OptimizationOptions(g_abstol=1e-6)) # fails due to bounds
+solve(prob, copy(x0), LineSearch(BFGS()), OptimizationOptions(g_abstol=1e-6)) # fails due to bounds
+solve(prob, copy(x0), LineSearch(BFGS(), HZAW()), OptimizationOptions(g_abstol=1e-6)) # fails due to bounds
+solve(prob_oop, x0, LineSearch(BFGS(), Backtracking()), OptimizationOptions(g_abstol=1e-6)) # fails due to bounds
+solve(prob_oop, x0, LineSearch(BFGS()), OptimizationOptions(g_abstol=1e-6)) # fails due to bounds
+solve(prob_oop, x0, LineSearch(BFGS(), HZAW()), OptimizationOptions(g_abstol=1e-6)) # fails due to bounds
 
-solve(prob, copy(x0), LineSearch(BFGS(), Backtracking()), MinOptions(g_abstol=1e-6)) # fails due to bounds
-solve(prob_oop, x0, LineSearch(BFGS(), Backtracking()), MinOptions(g_abstol=1e-6)) # fails due to bounds
+solve(prob, copy(x0), LineSearch(BFGS(), Backtracking()), OptimizationOptions(g_abstol=1e-6)) # fails due to bounds
+solve(prob_oop, x0, LineSearch(BFGS(), Backtracking()), OptimizationOptions(g_abstol=1e-6)) # fails due to bounds
 #=
 
 @testset "Finite difference setup" begin

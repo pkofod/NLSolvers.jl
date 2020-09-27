@@ -15,14 +15,14 @@ function TwoLoopVars(x, memory)
     TwoLoopVars(d, S, Y, α, ρ)
 end
 lbfgs_vars(method, x) = TwoLoopVars(x, method.memory)
-function solve(problem::OptimizationProblem, x0, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, options::MinOptions, cache=preallocate_qn_caches(mstyle(problem), x0))
+function solve(problem::OptimizationProblem, x0, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, options::OptimizationOptions, cache=preallocate_qn_caches(mstyle(problem), x0))
     solve(problem, (x0, nothing), approach, options, cache)
 end
-function solve(problem::OptimizationProblem, s0::Tuple, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, options::MinOptions, cache=preallocate_qn_caches(mstyle(problem), first(s0)))
+function solve(problem::OptimizationProblem, s0::Tuple, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, options::OptimizationOptions, cache=preallocate_qn_caches(mstyle(problem), first(s0)))
     _solve(InPlace(), problem, s0, approach, options, cache)
 end
 
-function _solve(mstyle, problem::OptimizationProblem, s0::Tuple, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, options::MinOptions, cache)
+function _solve(mstyle, problem::OptimizationProblem, s0::Tuple, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, options::OptimizationOptions, cache)
     t0 = time()
 
     #==============
@@ -55,7 +55,7 @@ function _solve(mstyle, problem::OptimizationProblem, s0::Tuple, approach::LineS
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     return ConvergenceInfo(approach, (P=P,B=B, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=iter, time=time()-t0), options)
 end
-function iterate(mstyle::InPlace, iter::Integer, qnvars::TwoLoopVars, objvars, P, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, prob::OptimizationProblem, problem::OptimizationProblem, options::MinOptions, is_first=nothing)
+function iterate(mstyle::InPlace, iter::Integer, qnvars::TwoLoopVars, objvars, P, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, prob::OptimizationProblem, problem::OptimizationProblem, options::OptimizationOptions, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     scheme, linesearch, K = modelscheme(approach), algorithm(approach), approach.scaling # make grabber and get a better name than K
     current_memory = min(iter-1, scheme.memory)
@@ -85,7 +85,7 @@ function iterate(mstyle::InPlace, iter::Integer, qnvars::TwoLoopVars, objvars, P
     return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=nothing, Pg=nothing), qnvars, P
 end
 
-function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, prob::OptimizationProblem, problem::OptimizationProblem, options::MinOptions, is_first=nothing)
+function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch{<:LBFGS{<:Inverse, <:TwoLoop}, <:Any, <:QNScaling}, prob::OptimizationProblem, problem::OptimizationProblem, options::OptimizationOptions, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     scheme, linesearch = modelscheme(approach), algorithm(approach)
     # Move nexts into currs

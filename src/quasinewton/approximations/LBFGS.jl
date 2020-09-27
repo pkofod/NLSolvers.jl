@@ -8,6 +8,9 @@ struct LBFGS{TA, F, T, TP}
   memory::T
   P::TP
 end
+summary(lbfgs::LBFGS{Inverse}) = "Inverse LBFGS"
+summary(lbfgs::LBFGS{Direct}) = "Direct LBFGS"
+
 hasprecon(::LBFGS{<:Inverse, <:Any, <:Any, <:Nothing}) = NoPrecon()
 hasprecon(::LBFGS{<:Inverse, <:Any, <:Any, <:Any}) = HasPrecon()
 

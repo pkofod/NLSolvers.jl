@@ -35,7 +35,7 @@ function default_neighbor(x_best)
   return x_best .+ T.(RandomNumbers.randn(n))
 end
 
-function solve(prob::OptimizationProblem, x0, method::SimulatedAnnealing, options::MinOptions)
+function solve(prob::OptimizationProblem, x0, method::SimulatedAnnealing, options::OptimizationOptions)
   T = eltype(x0)
   t0 = time()
 

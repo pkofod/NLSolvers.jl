@@ -186,13 +186,13 @@ end
 
 
 # using an "initial vectors" function we can initialize s if necessary or nothing if not to save on vectors
-function solve(problem::OptimizationProblem, x0, cg::ConjugateGradient, options::MinOptions)
+function solve(problem::OptimizationProblem, x0, cg::ConjugateGradient, options::OptimizationOptions)
   _solve(problem, x0, LineSearch(cg, HZAW()), options, mstyle(problem))
 end
-function solve(problem::OptimizationProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions)
+function solve(problem::OptimizationProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::OptimizationOptions)
   _solve(problem, x0, approach, options, mstyle(problem))
 end
-function _solve(problem::OptimizationProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::MinOptions, mstyle::MutateStyle)
+function _solve(problem::OptimizationProblem, x0, approach::LineSearch{<:ConjugateGradient, <:LineSearcher}, options::OptimizationOptions, mstyle::MutateStyle)
     t0 = time()
     #==============
          Setup
@@ -216,7 +216,7 @@ function _solve(problem::OptimizationProblem, x0, approach::LineSearch{<:Conjuga
     x, fx, ∇fx, z, fz, ∇fz, B = objvars
     return ConvergenceInfo(approach, (beta=β, ρs=norm(x.-z), ρx=norm(x), minimizer=z, fx=fx, minimum=fz, ∇fx=∇fx, ∇fz=∇fz, f0=f0, ∇f0=∇f0, iter=k, time=time()-t0), options)
 end
-function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, problem::OptimizationProblem, options::MinOptions, P=nothing, is_first=nothing)
+function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, problem::OptimizationProblem, options::OptimizationOptions, P=nothing, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     Tx = eltype(x)
@@ -254,7 +254,7 @@ function iterate(mstyle::InPlace, cgvars::CGVars, objvars, approach::LineSearch{
     return (x=x, fx=fx, ∇fx=∇fx, z=z, fz=fz, ∇fz=∇fz, B=nothing, Pg=Pg), P, CGVars(y, d, α, β, ls_success)
 end
 
-function iterate(mstyle::OutOfPlace, cgvars::CGVars, objvars, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, problem::OptimizationProblem, options::MinOptions, P=nothing, is_first=nothing)
+function iterate(mstyle::OutOfPlace, cgvars::CGVars, objvars, approach::LineSearch{<:ConjugateGradient, <:Any, <:Any}, problem::OptimizationProblem, options::OptimizationOptions, P=nothing, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     Tx = eltype(x)

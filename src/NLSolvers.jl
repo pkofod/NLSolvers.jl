@@ -81,7 +81,7 @@ struct Direct <: HessianApproximation end
 export Inverse, Direct
 # problem and options types
 include("optimize/problem_types.jl")
-export OptimizationProblem, MinOptions
+export OptimizationProblem, OptimizationOptions
 # Globalization strategies
 # TODO:
 

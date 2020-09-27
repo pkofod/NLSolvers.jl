@@ -58,7 +58,7 @@ function is_ϵ_active(x, lower, upper, ∇fx, ϵ∇f=eltype(x)(0))
 end
 
 isbinding(i, j) = i & j
-function solve(prob::OptimizationProblem, x0, scheme::ActiveBox, options::MinOptions)
+function solve(prob::OptimizationProblem, x0, scheme::ActiveBox, options::OptimizationOptions)
     t0 = time()
 
     x0, B0 = x0, [1.0 0.0; 0.0 1.0]

@@ -12,7 +12,7 @@ end
 # defaults for c's are from the flowchart of page 1370, σ's are from the bottom of 1370  
 APSO(; n_particles=nothing, limit_search_space=false, elitist_learning=true, c₁=2.0, c₂=2.0, σmin=0.1, σmax=1.0) = 
   APSO(n_particles, limit_search_space, elitist_learning, c₁, c₂, σmin, σmax)
-function solve(problem::OptimizationProblem, x0, method::APSO, options::MinOptions)
+function solve(problem::OptimizationProblem, x0, method::APSO, options::OptimizationOptions)
     if !(mstyle(problem) === InPlace())
         throw(ErrorException("solve() not defined for OutOfPlace() with Anderson"))
     end

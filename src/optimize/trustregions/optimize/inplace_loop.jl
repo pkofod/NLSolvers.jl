@@ -1,4 +1,4 @@
-function solve(problem::OptimizationProblem, s0::Tuple, approach::TrustRegion, options::MinOptions)
+function solve(problem::OptimizationProblem, s0::Tuple, approach::TrustRegion, options::OptimizationOptions)
     if !(mstyle(problem) === InPlace())
         throw(ErrorException("solve() not defined for OutOfPlace() with Anderson"))
     end
