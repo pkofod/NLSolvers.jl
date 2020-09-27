@@ -155,7 +155,7 @@ function find_steplength(mstyle, ls::Backtracking, φ::T, λ) where T
     t = -decrease*dφ0
 
     iter, α, β = 0, λ, λ # iteration variables
-	f_α = φ(α)   # initial function value
+	f_α = φ(α) # initial function value
 
 	if verbose
 		println("Entering line search with step size: ", λ)
