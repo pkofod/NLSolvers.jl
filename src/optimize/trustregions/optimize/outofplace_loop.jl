@@ -1,4 +1,4 @@
-# function minimize(objective::ObjWrapper, s0, approach::TrustRegion, options::MinOptions)
+# function minimize(objective::ObjWrapper, s0, approach::TrustRegion, options::OptimizationOptions)
 #     t0 = time()
 #     T = eltype(x0)
 #     x0, B0 = s0

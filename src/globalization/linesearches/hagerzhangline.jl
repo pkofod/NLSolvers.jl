@@ -18,6 +18,7 @@ struct HZAW{T} <: LineSearcher
   θ::T
   γ::T
 end
+Base.summary(::HZAW) = "Approximate Wolfe Line Search (Hager & Zhang)"
 function HZAW(; decrease=0.1, curvature=0.9, theta=0.5, gamma=2/3)
   if !(0 < decrease ≤ curvature)
     println("Decrease constant must be positive and smaller than the curvature condition.")

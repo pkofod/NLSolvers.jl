@@ -234,11 +234,11 @@ end
 # nd = NonDiffed(t->sum(abs2, boxbod_f.(xdata, Ref(t)).-ydata))
 # bounds = (fill(0.0, 2), fill(500.0, 2))
 # problem = MinProblem(; obj=nd, bounds=bounds)
-# @show minimize!(problem, zeros(2), APSO(), MinOptions())
-# @show minimize!(nd, [200.0, 1], NelderMead(), MinOptions())
+# @show minimize!(problem, zeros(2), APSO(), OptimizationOptions())
+# @show minimize!(nd, [200.0, 1], NelderMead(), OptimizationOptions())
 
-# @show minimize!(nd, minimize!(nd, [200.0, 10.0], NelderMead(), MinOptions()).info.minimizer, NelderMead(), MinOptions())
-# @show minimize!(nd, minimize!(nd, [200.0, 5.0], NelderMead(), MinOptions()).info.minimizer, NelderMead(), MinOptions())
+# @show minimize!(nd, minimize!(nd, [200.0, 10.0], NelderMead(), OptimizationOptions()).info.minimizer, NelderMead(), OptimizationOptions())
+# @show minimize!(nd, minimize!(nd, [200.0, 5.0], NelderMead(), OptimizationOptions()).info.minimizer, NelderMead(), OptimizationOptions())
 
 # function F(b, F, J=nothing)
 #   @. F = b[1]*(1 - exp(-b[2]*xdata)) - ydata
@@ -251,10 +251,10 @@ end
 # end
 
 # Fc = zeros(6)
-# minimize!(lsqwrap, [100.0, 1.0], NelderMead(), MinOptions())
+# minimize!(lsqwrap, [100.0, 1.0], NelderMead(), OptimizationOptions())
 
 # lsqwrap = NLSolvers.LsqWrapper(F, zeros(6), zeros(6,2))
-# minimize!(MinProblem(;obj=lsqwrap,bounds=([0.0,0.0],[250.0,2.0])), [100.0, 1.0], APSO(), MinOptions())
+# minimize!(MinProblem(;obj=lsqwrap,bounds=([0.0,0.0],[250.0,2.0])), [100.0, 1.0], APSO(), OptimizationOptions())
 
 # function F(F, b)
 #   @. F = b[1]*(1 - exp(-b[2]*xdata)) - ydata
@@ -276,7 +276,7 @@ end
 
 
 # lsqwrap = NLSolvers.LsqWrapper(OnceDiffed(F), zeros(6), zeros(6,2))
-# minimize!(lsqwrap, [100.0, 1.0], LineSearch(LBFGS()), MinOptions())
+# minimize!(lsqwrap, [100.0, 1.0], LineSearch(LBFGS()), OptimizationOptions())
 
 
 # #using Plots

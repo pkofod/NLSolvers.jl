@@ -14,3 +14,4 @@ function DefaultNewtonLinsolve(d, B, g)
 end
 Newton(;approx=Direct(), linsolve=DefaultNewtonLinsolve) = Newton(approx, linsolve)
 summary(::Newton{<:Direct, <:typeof(DefaultNewtonLinsolve)}) = "Newton's method with default linsolve"
+summary(::Newton{<:Direct, Any}) = "Newton's method with user supplied linsolve"

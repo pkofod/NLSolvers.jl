@@ -1,18 +1,15 @@
 # make this keyworded?
 init(::NEqProblem, ::LineSearch, x) = (z=copy(x), d=copy(x), Fx=copy(x), Jx=x*x')
 # the bang is just potentially inplace x and state. nonbang copies these
-function solve(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Static(1)), options=NEqOptions(), state=init(prob, method, x))
-    if !(mstyle(prob) === InPlace())
-        throw(ErrorException("solve() not defined for OutOfPlace() with LineSearch and Newton"))
-    end
+function solve(problem::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Static(1)), options=NEqOptions(), state=init(problem, method, x))
 
     t0 = time()
-    
+
     # Unpack
     scheme, linesearch = modelscheme(method), algorithm(method)
     # Unpack important objectives
-    F = prob.R.F
-    FJ = prob.R.FJ
+    F = problem.R.F
+    FJ = problem.R.FJ
     # Unpack state
     z, d, Fx, Jx = state
     T = eltype(Fx)
@@ -20,15 +17,15 @@ function solve(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Stat
 
     # Set up MeritObjective. This defines the least squares
     # objective for the line search.
-    merit = MeritObjective(prob, F, FJ, Fx, Jx, d)
-    meritproblem = OptimizationProblem(merit)
+    merit = MeritObjective(problem, F, FJ, Fx, Jx, d)
+    meritproblem = OptimizationProblem(merit, nothing, Euclidean(0), nothing, mstyle(problem) isa InPlace ? InPlace() : OutOfPlace(), nothing)
     # Evaluate the residual and Jacobian
     Fx, Jx = FJ(Fx, Jx, x)
     ρF0, ρ2F0 = norm(Fx, Inf),  norm(Fx, 2)
 
     stoptol = T(options.f_reltol)*ρF0 + T(options.f_abstol)
     if ρF0 < stoptol
-        return ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, iter=0, time=time()-t0), options)
+        return ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, ρs=T(NaN), iter=0, time=time()-t0), options)
     end
 
     # Create variable for norms but keep the first ones for printing purposes.
@@ -37,11 +34,17 @@ function solve(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Stat
     iter = 1
     while iter ≤ options.maxiter
         # Shift z into x
-        x .= z
-
+        if mstyle isa InPlace
+            x .= z
+        else
+            x = copy(z)
+        end
         # Update the search direction
-        d = scheme.linsolve(d, Jx, -Fx)
-
+        if mstyle isa InPlace
+            d = scheme.linsolve(d, Jx, -Fx)
+        else
+            d = scheme.linsolve(Jx, -Fx)
+        end
         # Need to restrict to static and backtracking here because we don't allow
         # for methods that calculate the gradient of the line objective.
         #
@@ -62,10 +65,12 @@ function solve(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Stat
         φ = LineObjective(meritproblem, z, z, x, d, (ρ2F^2)/2, -ρ2F^2)
 
         # Perform line search along d
-        α, f_α, ls_success = find_steplength(InPlace(), linesearch, φ, T(1.0))
+        α, f_α, ls_success = find_steplength(mstyle, linesearch, φ, T(1))
+
+        # # Calculate final step vector and update the state
 
         # Step in the direction α*d
-        z .= x .+ α.*d
+        z = retract(problem, z, x, d, α)
 
         # Update residual and jacobian
         Fx, Jx = FJ(Fx, Jx, z)
@@ -81,5 +86,5 @@ function solve(prob::NEqProblem, x, method::LineSearch=LineSearch(Newton(), Stat
         end
         iter += 1
     end
-    return ConvergenceInfo(method, (solution=x, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, ρs=ρs, iter=iter, time=time()-t0), options)
+    return ConvergenceInfo(method, (solution=z, best_residual=Fx, ρF0=ρF0, ρ2F0=ρ2F0, ρs=ρs, iter=iter, time=time()-t0), options)
 end

@@ -16,14 +16,14 @@ function preallocate_qn_caches(mstyle, x0)
     end
 end
 
-function solve(problem::OptimizationProblem, x0, approach::LineSearch, options::MinOptions, cache=preallocate_qn_caches(mstyle(problem), x0))
+function solve(problem::OptimizationProblem, x0, approach::LineSearch, options::OptimizationOptions, cache=preallocate_qn_caches(mstyle(problem), x0))
     _solve(mstyle(problem), problem, (x0, nothing), approach, options, cache)
 end
-function solve(problem::OptimizationProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache=preallocate_qn_caches(mstyle(problem), first(s0)))
+function solve(problem::OptimizationProblem, s0::Tuple, approach::LineSearch, options::OptimizationOptions, cache=preallocate_qn_caches(mstyle(problem), first(s0)))
     _solve(mstyle(problem), problem, s0, approach, options, cache)
 end
 
-function _solve(mstyle, problem::OptimizationProblem, s0::Tuple, approach::LineSearch, options::MinOptions, cache)
+function _solve(mstyle, problem::OptimizationProblem, s0::Tuple, approach::LineSearch, options::OptimizationOptions, cache)
 #    global_logger(options.logger)
     t0 = time()
 
@@ -71,7 +71,7 @@ function print_trace(approach::LineSearch, options, iter, t0, objvars)
        println(@sprintf("iter: %d   time: %.4f   obj: %.4e   ||∇f||: %.4e    α: %.4e", iter, time()-t0, objvars.fz, norm(objvars.∇fz, Inf), objvars.α))
     end
 end
-function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, problem::OptimizationProblem, options::MinOptions, is_first=nothing)
+function iterate(mstyle::InPlace, cache, objvars, P, approach::LineSearch, problem::OptimizationProblem, options::OptimizationOptions, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
 
@@ -109,7 +109,7 @@ function print_trace(approach::LineSearch, options, iter, t0, objvars, Δ)
     end
 end
 
-function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch, problem::OptimizationProblem, options::MinOptions, is_first=nothing)
+function iterate(mstyle::OutOfPlace, cache, objvars, P, approach::LineSearch, problem::OptimizationProblem, options::OptimizationOptions, is_first=nothing)
     # split up the approach into the hessian approximation scheme and line search
     x, fx, ∇fx, z, fz, ∇fz, B, Pg = objvars
     Tf = typeof(fx)
