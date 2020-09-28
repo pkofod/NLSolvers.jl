@@ -99,7 +99,7 @@ function f()
     @time res = solve(quantproblem, 0.4, method, options, state)
     @time res = solve(quantproblem, 0.4, method, options, state)
 end
-
+#=
 quantile_f(Fx, x) = log(max(x, 0.000001))
 quantile_j(Jx, x) = 1.0/x
 function quantile_fj(Fx, Jx, x)
@@ -116,3 +116,4 @@ options = NEqOptions()
 state = NLSolvers.init(quantproblem, method, 3.0)
 @time res = solve(quantproblem, 0.4, method, options, state)
 @time res = solve(quantproblem, 0.4, method, options, state)
+=#
